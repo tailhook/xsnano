@@ -20,17 +20,40 @@
     IN THE SOFTWARE.
 */
 
-#ifndef XS_XPUB_INCLUDED
-#define XS_XPUB_INCLUDED
+#include "../include/xs.h"
 
-#include "sock.h"
+#include "sub.h"
+#include "likely.h"
 
-typedef struct
+int xs_sub_init (xs_sock *sock)
 {
-    xs_sock sock;
-} xs_xpub;
+    int rc;
+    xs_sub *self = (xs_sub*) sock;
 
-int xs_xpub_init (xs_sock *sock);
-int xs_xpub_term (xs_sock *sock);
+    rc = xs_xsub_init (&self->xsub.sock);
+    if (unlikely (rc < 0))
+        return rc;
 
-#endif
+    /*  Initialise virtual function pointers. */
+    self->xsub.sock.vfptr.term = xs_sub_term;
+    self->xsub.sock.type = XS_SUB;
+
+    /*  TODO  */
+
+    return 0;
+}
+
+int xs_sub_term (xs_sock *sock)
+{
+    int rc;
+    xs_sub *self = (xs_sub*) sock;
+    
+    /*  TODO  */
+
+    rc = xs_xsub_term (&self->xsub.sock);
+    if (unlikely (rc < 0))
+        return rc;
+
+    return 0;    
+}
+

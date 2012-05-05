@@ -8,8 +8,11 @@ libxsnano_la_SOURCES = \
     err.h err.c \
     likely.h \
     mutex.h mutex.c \
+    pub.h pub.c \
     sock.h sock.c \
-    xpub.h xpub.c
+    sub.h sub.c \
+    xpub.h xpub.c \
+    xsub.h xsub.c
 
 libxsnano_la_LDFLAGS = -version-info $(XSNANO_VERSION)
 

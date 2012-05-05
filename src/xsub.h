@@ -20,17 +20,17 @@
     IN THE SOFTWARE.
 */
 
-#ifndef XS_XPUB_INCLUDED
-#define XS_XPUB_INCLUDED
+#ifndef XS_XSUB_INCLUDED
+#define XS_XSUB_INCLUDED
 
 #include "sock.h"
 
 typedef struct
 {
     xs_sock sock;
-} xs_xpub;
+} xs_xsub;
 
-int xs_xpub_init (xs_sock *sock);
-int xs_xpub_term (xs_sock *sock);
+int xs_xsub_init (xs_sock *sock);
+int xs_xsub_term (xs_sock *sock);
 
 #endif

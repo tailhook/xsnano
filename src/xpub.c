@@ -25,12 +25,10 @@
 #include "xpub.h"
 #include "likely.h"
 
-/*  Prototype of virtual functions implementations. */
-static int xs_xpub_term (xs_sock *sock);
-
-int xs_xpub_init (xs_xpub *self)
+int xs_xpub_init (xs_sock *sock)
 {
     int rc;
+    xs_xpub *self = (xs_xpub*) sock;
 
     rc = xs_sock_init (&self->sock);
     if (unlikely (rc < 0))
@@ -45,7 +43,7 @@ int xs_xpub_init (xs_xpub *self)
     return 0;
 }
 
-static int xs_xpub_term (xs_sock *sock)
+int xs_xpub_term (xs_sock *sock)
 {
     int rc;
     xs_xpub *self = (xs_xpub*) sock;

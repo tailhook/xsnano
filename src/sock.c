@@ -28,7 +28,11 @@
 #include "sock.h"
 #include "err.h"
 #include "likely.h"
+
+#include "pub.h"
+#include "sub.h"
 #include "xpub.h"
+#include "xsub.h"
 
 int xs_sock_alloc (xs_sock **self, int type)
 {
@@ -38,10 +42,25 @@ int xs_sock_alloc (xs_sock **self, int type)
         return -EFAULT;
 
     switch (type) {
+    case XS_PUB:
+        *self = malloc (sizeof (xs_pub));
+        alloc_assert (*self);
+        rc = xs_pub_init (*self);
+        break;
+    case XS_SUB:
+        *self = malloc (sizeof (xs_sub));
+        alloc_assert (*self);
+        rc = xs_sub_init (*self);
+        break;
     case XS_XPUB:
         *self = malloc (sizeof (xs_xpub));
         alloc_assert (*self);
-        rc = xs_xpub_init ((xs_xpub*) *self);
+        rc = xs_xpub_init (*self);
+        break;
+    case XS_XSUB:
+        *self = malloc (sizeof (xs_xsub));
+        alloc_assert (*self);
+        rc = xs_xsub_init (*self);
         break;
     default:
         return -EINVAL;
