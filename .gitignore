@@ -16,3 +16,5 @@
 .libs/
 *.l[ao]
 *.o
+src/Makefile
+src/Makefile.in
