@@ -31,6 +31,10 @@ typedef struct xs_sock_
 {
     struct {
         int (*term) (struct xs_sock_ *self);
+        int (*setopt) (struct xs_sock_ *self, int level, int option,
+            const void *optval, size_t optvallen);
+        int (*getopt) (struct xs_sock_ *self, int level, int option,
+            const void *optval, size_t *optvallen);
     } vfptr;
 
     /*  Socket type (XS_PUB, XS_SUB, XS_REQ, XS_REP or similar). */

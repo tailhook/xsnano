@@ -86,8 +86,11 @@ int xs_sock_dealloc (xs_sock *self)
 
 int xs_sock_init (xs_sock *self)
 {
-    /*  Set virtual members to invalid values to chatch any potential errors. */
+    /*  Set virtual members to invalid values to catch any potential errors. */
     memset (&self->vfptr, 0, sizeof (self->vfptr));
+    self->vfptr.term = xs_sock_term;
+    self->vfptr.setopt = xs_sock_setopt;
+    self->vfptr.getopt = xs_sock_getopt;
     self->type = -1;
 
     xs_mutex_init (&self->sync);
@@ -101,7 +104,12 @@ int xs_sock_term (xs_sock *self)
 int xs_sock_setopt (xs_sock *self, int level, int option, const void *optval,
     size_t optvallen)
 {
-    return -ENOTSUP;
+    /*  Check for invalid pointers. */
+    if (!optval)
+        return -EFAULT;
+
+    /*  As for now, no generic options are supported. */
+    return -EINVAL;
 }
 
 int xs_sock_getopt (xs_sock *self, int level, int option, void *optval,
@@ -111,7 +119,6 @@ int xs_sock_getopt (xs_sock *self, int level, int option, void *optval,
     if (!optval || !optvallen)
         return -EFAULT;
 
-    /*  TODO: Other levels should be implemented by spefic socket types. */
     if (level != XS_SOL_SOCKET)
         return -EINVAL;
 

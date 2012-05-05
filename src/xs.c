@@ -91,7 +91,8 @@ int xs_setsockopt (int s, int level, int option, const void *optval,
     int rc;
 
     XS_CHECK_SOCKET (s);
-    rc = xs_sock_setopt (ctx.socks [s], level, option, optval, optvallen);
+    rc = ctx.socks [s]->vfptr.setopt (ctx.socks [s], level, option,
+        optval, optvallen);
     if (unlikely (rc < 0)) {
         errno = -rc;
         return -1;
@@ -105,7 +106,8 @@ int xs_getsockopt (int s, int level, int option, void *optval,
     int rc;
 
     XS_CHECK_SOCKET (s);
-    rc = xs_sock_getopt (ctx.socks [s], level, option, optval, optvallen);
+    rc = ctx.socks [s]->vfptr.getopt (ctx.socks [s], level, option,
+        optval, optvallen);
     if (unlikely (rc < 0)) {
         errno = -rc;
         return -1;

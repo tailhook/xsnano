@@ -32,5 +32,7 @@ typedef struct
 
 int xs_sub_init (xs_sock *sock);
 int xs_sub_term (xs_sock *sock);
+int xs_sub_setopt (xs_sock *sock, int level, int option,
+    const void *optval, size_t optvallen);
 
 #endif

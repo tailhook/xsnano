@@ -23,6 +23,7 @@
 #include "../include/xs.h"
 
 #include "sub.h"
+#include "err.h"
 #include "likely.h"
 
 int xs_sub_init (xs_sock *sock)
@@ -36,6 +37,7 @@ int xs_sub_init (xs_sock *sock)
 
     /*  Initialise virtual function pointers. */
     self->xsub.sock.vfptr.term = xs_sub_term;
+    self->xsub.sock.vfptr.setopt = xs_sub_setopt;
     self->xsub.sock.type = XS_SUB;
 
     /*  TODO  */
@@ -57,3 +59,19 @@ int xs_sub_term (xs_sock *sock)
     return 0;    
 }
 
+int xs_sub_setopt (xs_sock *sock, int level, int option,
+    const void *optval, size_t optvallen)
+{
+    int rc;
+    xs_sub *self = (xs_sub*) sock;
+
+    if (level == XS_SOL_SOCKET && option == XS_SUBSCRIBE) {
+        xs_assert (0);
+    }
+
+    if (level == XS_SOL_SOCKET && option == XS_UNSUBSCRIBE) {
+        xs_assert (0);
+    }
+
+    return xs_sock_setopt (sock, level, option, optval, optvallen);
+}

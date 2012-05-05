@@ -26,10 +26,21 @@
 #include <errno.h>
 #include <stdio.h>
 
-/*  include XS header to define XS-specific error codes. */
+/*  Include XS header to define XS-specific error codes. */
 #include "../include/xs.h"
 
 #include "likely.h"
+
+/*  Same as system assert(). However, under Win32 assert has some deficiencies.
+    Thus this macro. */
+#define xs_assert(x) \
+    do {\
+        if (unlikely (!(x))) {\
+            fprintf (stderr, "Assertion failed: %s (%s:%d)\n", #x, \
+                __FILE__, __LINE__);\
+            xs_err_abort ();\
+        }\
+    } while (0)
 
 /*  Checks whether memory allocation was successful. */
 #define alloc_assert(x) \

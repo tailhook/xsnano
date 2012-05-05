@@ -136,6 +136,8 @@ XS_EXPORT int xs_term (void);
 #define XS_SOL_SOCKET 1
 
 /*  Socket options.                                                           */
+#define XS_SUBSCRIBE 6
+#define XS_UNSUBSCRIBE 7
 #define XS_TYPE 16
 
 /*  Send/recv options.                                                        */
