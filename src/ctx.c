@@ -24,6 +24,7 @@
 
 #include "ctx.h"
 #include "err.h"
+#include "likely.h"
 
 int xs_ctx_init (xs_ctx *self)
 {
@@ -51,12 +52,8 @@ int xs_ctx_socket (xs_ctx *self, int type)
     //  TODO: Find the empty slot in O(1) time!
     for (s = 0; s != self->socks_num; ++s) {
         if (!self->socks [s]) {
-            self->socks [s] = malloc (sizeof (xs_sock));
-            alloc_assert (self->socks [s]);
-            rc = xs_sock_init (self->socks [s], type);
-            if (rc < 0) {
-                free (self->socks [s]);
-                self->socks [s] = NULL;
+            rc = xs_sock_alloc (&self->socks [s], type);
+            if (unlikely (rc < 0)) {
                 xs_mutex_unlock (&self->sync);
                 return rc;
             }
@@ -76,7 +73,7 @@ int xs_ctx_close (xs_ctx *self, int s)
         return -EBADF;
 
     xs_mutex_lock (&self->sync);
-    rc = xs_sock_term (self->socks [s]);
+    rc = xs_sock_dealloc (self->socks [s]);
     if (rc < 0) {
         xs_mutex_unlock (&self->sync);
         return rc;

@@ -20,29 +20,42 @@
     IN THE SOFTWARE.
 */
 
-#include <assert.h>
-#include <stdio.h>
-
 #include "../include/xs.h"
 
-int main ()
+#include "xpub.h"
+#include "likely.h"
+
+/*  Prototype of virtual functions implementations. */
+static int xs_xpub_term (xs_sock *sock);
+
+int xs_xpub_init (xs_xpub *self)
 {
     int rc;
-    int s;
 
-    printf ("basic test running...\n");
+    rc = xs_sock_init (&self->sock);
+    if (unlikely (rc < 0))
+        return rc;
 
-    rc = xs_init ();
-    assert (rc == 0);
+    /*  Initialise virtual function pointers. */
+    self->sock.vfptr.term = xs_xpub_term;
+    self->sock.type = XS_XPUB;
 
-    s = xs_socket (XS_XPUB);
-    assert (s >= 0);
-
-    rc = xs_close (s);
-    assert (rc == 0);
-
-    rc = xs_term ();
-    assert (rc == 0);
+    /*  TODO  */
 
     return 0;
 }
+
+static int xs_xpub_term (xs_sock *sock)
+{
+    int rc;
+    xs_xpub *self = (xs_xpub*) sock;
+    
+    /*  TODO  */
+
+    rc = xs_sock_term (&self->sock);
+    if (unlikely (rc < 0))
+        return rc;
+
+    return 0;    
+}
+

@@ -20,12 +20,57 @@
     IN THE SOFTWARE.
 */
 
+#include <stdlib.h>
+#include <string.h>
+
+#include "../include/xs.h"
+
 #include "sock.h"
 #include "err.h"
+#include "likely.h"
+#include "xpub.h"
 
-int xs_sock_init (xs_sock *self, int type)
+int xs_sock_alloc (xs_sock **self, int type)
 {
-    self->type = type;
+    int rc;
+
+    if (unlikely (!self))
+        return -EFAULT;
+
+    switch (type) {
+    case XS_XPUB:
+        *self = malloc (sizeof (xs_xpub));
+        alloc_assert (*self);
+        rc = xs_xpub_init ((xs_xpub*) *self);
+        break;
+    default:
+        return -EINVAL;
+    }
+    if (unlikely (rc < 0)) {
+        free (*self);
+        *self = NULL;
+        return rc;
+    }
+    return 0;
+}
+
+int xs_sock_dealloc (xs_sock *self)
+{
+    int rc;
+
+    rc = self->vfptr.term (self);
+    if (unlikely (rc < 0))
+        return rc;
+    free (self);
+    return 0;
+}
+
+int xs_sock_init (xs_sock *self)
+{
+    /*  Set virtual members to invalid values to chatch any potential errors. */
+    memset (&self->vfptr, 0, sizeof (self->vfptr));
+    self->type = -1;
+
     xs_mutex_init (&self->sync);
 }
 

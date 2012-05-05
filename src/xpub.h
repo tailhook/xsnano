@@ -20,29 +20,16 @@
     IN THE SOFTWARE.
 */
 
-#include <assert.h>
-#include <stdio.h>
+#ifndef XS_XPUB_INCLUDED
+#define XS_XPUB_INCLUDED
 
-#include "../include/xs.h"
+#include "sock.h"
 
-int main ()
+typedef struct
 {
-    int rc;
-    int s;
+    xs_sock sock;
+} xs_xpub;
 
-    printf ("basic test running...\n");
+int xs_xpub_init (xs_xpub *self);
 
-    rc = xs_init ();
-    assert (rc == 0);
-
-    s = xs_socket (XS_XPUB);
-    assert (s >= 0);
-
-    rc = xs_close (s);
-    assert (rc == 0);
-
-    rc = xs_term ();
-    assert (rc == 0);
-
-    return 0;
-}
+#endif

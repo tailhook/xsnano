@@ -27,8 +27,12 @@
 
 #include "mutex.h"
 
-typedef struct
+typedef struct xs_sock_
 {
+    struct {
+        int (*term) (struct xs_sock_ *self);
+    } vfptr;
+
     /*  Socket type (XS_PUB, XS_SUB, XS_REQ, XS_REP or similar). */
     int type;
 
@@ -37,7 +41,10 @@ typedef struct
     xs_mutex sync;
 } xs_sock;
 
-int xs_sock_init (xs_sock *self, int type);
+int xs_sock_alloc (xs_sock **self, int type);
+int xs_sock_dealloc (xs_sock *self);
+
+int xs_sock_init (xs_sock *self);
 int xs_sock_term (xs_sock *self);
 
 int xs_sock_setopt (xs_sock *self, int level, int option, const void *optval,
