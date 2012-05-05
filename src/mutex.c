@@ -21,6 +21,7 @@
 */
 
 #include "mutex.h"
+#include "err.h"
 
 void xs_mutex_init (xs_mutex *self)
 {

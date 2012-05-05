@@ -14,6 +14,7 @@ AC_SUBST([XSNANO_VERSION], [0:0:0])
 AC_CONFIG_FILES([
     Makefile
     src/Makefile
+    tests/Makefile
 ])
 
 AC_OUTPUT

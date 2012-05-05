@@ -16,5 +16,10 @@
 .libs/
 *.l[ao]
 *.o
+config/*
+m4/*
 src/Makefile
 src/Makefile.in
+tests/Makefile
+tests/Makefile.in
+tests/basic

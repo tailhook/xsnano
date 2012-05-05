@@ -20,38 +20,21 @@
     IN THE SOFTWARE.
 */
 
-#ifndef XS_ERR_INCLUDED
-#define XS_ERR_INCLUDED
-
-#include <errno.h>
+#include <xs.h>
+#include <assert.h>
 #include <stdio.h>
 
-/*  include XS header to define XS-specific error codes. */
-#include "../include/xs.h"
+int main ()
+{
+    int rc;
 
-#include "likely.h"
+    printf ("basic test running...\n");
 
-/*  Checks whether memory allocation was successful. */
-#define alloc_assert(x) \
-    do {\
-        if (unlikely (!x)) {\
-            fprintf (stderr, "Out of memory (%s:%d)\n",\
-                __FILE__, __LINE__);\
-            xs_err_abort ();\
-        }\
-    } while (0)
+    rc = xs_init ();
+    assert (rc == 0);
 
-/*  Checks whether supplied errno number is an error. */
-#define errnum_assert(x) \
-    do {\
-        if (unlikely (x)) {\
-            fprintf (stderr, "%s (%s:%d)\n", xs_err_strerror (x), \
-                __FILE__, __LINE__);\
-            xs_err_abort ();\
-        }\
-    } while (0)
+    rc = xs_term ();
+    assert (rc == 0);
 
-void xs_err_abort (void);
-const char *xs_err_strerror (int errnum);
-
-#endif
+    return 0;
+}
