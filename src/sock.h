@@ -25,8 +25,16 @@
 
 #include <stddef.h>
 
+#include "mutex.h"
+
 typedef struct
 {
+    /*  Socket type (XS_PUB, XS_SUB, XS_REQ, XS_REP or similar). */
+    int type;
+
+    /*  Critical section around the whole socket object --
+        except for asynchronous operations. */
+    xs_mutex sync;
 } xs_sock;
 
 int xs_sock_init (xs_sock *self, int type);

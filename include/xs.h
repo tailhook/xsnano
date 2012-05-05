@@ -130,6 +130,9 @@ XS_EXPORT int xs_term (void);
 #define XS_PUB 1
 #define XS_SUB 2
 
+/*  Socket option levels.                                                     */
+#define XS_SOL_SOCKET 1
+
 /*  Socket options.                                                           */
 #define XS_TYPE 16
 

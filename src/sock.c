@@ -25,12 +25,13 @@
 
 int xs_sock_init (xs_sock *self, int type)
 {
-    return -ENOTSUP;
+    self->type = type;
+    xs_mutex_init (&self->sync);
 }
 
 int xs_sock_term (xs_sock *self)
 {
-    return -ENOTSUP;
+    xs_mutex_term (&self->sync);
 }
 
 int xs_sock_setopt (xs_sock *self, int level, int option, const void *optval,
@@ -42,7 +43,26 @@ int xs_sock_setopt (xs_sock *self, int level, int option, const void *optval,
 int xs_sock_getopt (xs_sock *self, int level, int option, void *optval,
     size_t *optvallen)
 {
-    return -ENOTSUP;
+    /*  Check for invalid pointers. */
+    if (!optval || !optvallen)
+        return -EFAULT;
+
+    /*  TODO: Other levels should be implemented by spefic socket types. */
+    if (level != XS_SOL_SOCKET)
+        return -EINVAL;
+
+    /*  Find the option specified and return its value. */
+    switch (option) {
+    case XS_TYPE:
+        if (*optvallen < sizeof (int))
+            return -EINVAL;
+        *((int*) optval) = self->type;
+        *optvallen = sizeof (int);
+        return 0;
+    }
+
+    /*  The option specified does not exist on this level. */
+    return -ENOPROTOOPT;
 }
 
 int xs_sock_bind (xs_sock *self, const char *addr)
