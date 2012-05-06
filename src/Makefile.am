@@ -7,6 +7,7 @@ libxsnano_la_SOURCES = \
     ctx.h ctx.c \
     err.h err.c \
     likely.h \
+    msg.h msg.c \
     mutex.h mutex.c \
     pub.h pub.c \
     sock.h sock.c \
