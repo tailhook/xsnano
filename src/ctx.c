@@ -73,11 +73,7 @@ int xs_ctx_close (xs_ctx *self, int s)
         return -EBADF;
 
     xs_mutex_lock (&self->sync);
-    rc = xs_sock_dealloc (self->socks [s]);
-    if (rc < 0) {
-        xs_mutex_unlock (&self->sync);
-        return rc;
-    }
+    xs_sock_dealloc (self->socks [s]);
     self->socks [s] = NULL;
     xs_mutex_unlock (&self->sync);
     return 0;

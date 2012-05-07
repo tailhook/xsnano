@@ -45,18 +45,13 @@ int xs_sub_init (xs_sock *sock)
     return 0;
 }
 
-int xs_sub_term (xs_sock *sock)
+void xs_sub_term (xs_sock *sock)
 {
-    int rc;
     xs_sub *self = (xs_sub*) sock;
     
     /*  TODO  */
 
-    rc = xs_xsub_term (&self->xsub.sock);
-    if (unlikely (rc < 0))
-        return rc;
-
-    return 0;    
+    xs_xsub_term (&self->xsub.sock);
 }
 
 int xs_sub_setopt (xs_sock *sock, int level, int option,

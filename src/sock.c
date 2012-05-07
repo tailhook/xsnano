@@ -73,15 +73,10 @@ int xs_sock_alloc (xs_sock **self, int type)
     return 0;
 }
 
-int xs_sock_dealloc (xs_sock *self)
+void xs_sock_dealloc (xs_sock *self)
 {
-    int rc;
-
-    rc = self->vfptr.term (self);
-    if (unlikely (rc < 0))
-        return rc;
+    self->vfptr.term (self);
     free (self);
-    return 0;
 }
 
 int xs_sock_init (xs_sock *self)
@@ -96,7 +91,7 @@ int xs_sock_init (xs_sock *self)
     xs_mutex_init (&self->sync);
 }
 
-int xs_sock_term (xs_sock *self)
+void xs_sock_term (xs_sock *self)
 {
     xs_mutex_term (&self->sync);
 }

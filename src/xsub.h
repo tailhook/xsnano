@@ -31,6 +31,6 @@ typedef struct
 } xs_xsub;
 
 int xs_xsub_init (xs_sock *sock);
-int xs_xsub_term (xs_sock *sock);
+void xs_xsub_term (xs_sock *sock);
 
 #endif

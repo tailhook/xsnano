@@ -43,17 +43,12 @@ int xs_xpub_init (xs_sock *sock)
     return 0;
 }
 
-int xs_xpub_term (xs_sock *sock)
+void xs_xpub_term (xs_sock *sock)
 {
-    int rc;
     xs_xpub *self = (xs_xpub*) sock;
     
     /*  TODO  */
 
-    rc = xs_sock_term (&self->sock);
-    if (unlikely (rc < 0))
-        return rc;
-
-    return 0;    
+    xs_sock_term (&self->sock);
 }
 

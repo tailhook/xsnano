@@ -31,6 +31,6 @@ typedef struct
 } xs_pub;
 
 int xs_pub_init (xs_sock *sock);
-int xs_pub_term (xs_sock *sock);
+void xs_pub_term (xs_sock *sock);
 
 #endif

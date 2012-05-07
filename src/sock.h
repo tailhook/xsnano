@@ -30,7 +30,7 @@
 typedef struct xs_sock_
 {
     struct {
-        int (*term) (struct xs_sock_ *self);
+        void (*term) (struct xs_sock_ *self);
         int (*setopt) (struct xs_sock_ *self, int level, int option,
             const void *optval, size_t optvallen);
         int (*getopt) (struct xs_sock_ *self, int level, int option,
@@ -46,10 +46,10 @@ typedef struct xs_sock_
 } xs_sock;
 
 int xs_sock_alloc (xs_sock **self, int type);
-int xs_sock_dealloc (xs_sock *self);
+void xs_sock_dealloc (xs_sock *self);
 
 int xs_sock_init (xs_sock *self);
-int xs_sock_term (xs_sock *self);
+void xs_sock_term (xs_sock *self);
 
 int xs_sock_setopt (xs_sock *self, int level, int option, const void *optval,
     size_t optvallen);
