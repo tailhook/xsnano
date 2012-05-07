@@ -1,8 +1,8 @@
-lib_LTLIBRARIES = libxsnano.la
+lib_LTLIBRARIES = libxs.la
 
 include_HEADERS = ../include/xs.h
 
-libxsnano_la_SOURCES = \
+libxs_la_SOURCES = \
     xs.c \
     ctx.h ctx.c \
     err.h err.c \
@@ -15,5 +15,5 @@ libxsnano_la_SOURCES = \
     xpub.h xpub.c \
     xsub.h xsub.c
 
-libxsnano_la_LDFLAGS = -version-info $(XSNANO_VERSION)
+libxs_la_LDFLAGS = -version-info $(LIBXS_VERSION)
 
