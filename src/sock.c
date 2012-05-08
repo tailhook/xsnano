@@ -23,6 +23,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* TODO: Remove */
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include "../include/xs.h"
 
 #include "sock.h"
@@ -33,6 +37,22 @@
 #include "sub.h"
 #include "xpub.h"
 #include "xsub.h"
+
+void xs_sock_send_done (void *arg)
+{
+    int rc;
+    xs_sock *self = (xs_sock*) arg;
+
+    xs_mutex_lock (&self->sync);
+
+    /*  TODO: Mark the tcpout as readable. */
+
+    /*  Release the threads waiting to send. */
+    rc = pthread_cond_broadcast (&self->writeable);
+    errnum_assert (rc);
+
+    xs_mutex_unlock (&self->sync);
+}
 
 int xs_sock_alloc (xs_sock **self, int type)
 {
@@ -81,6 +101,8 @@ void xs_sock_dealloc (xs_sock *self)
 
 int xs_sock_init (xs_sock *self)
 {
+    int rc;
+
     /*  Set virtual members to invalid values to catch any potential errors. */
     memset (&self->vfptr, 0, sizeof (self->vfptr));
     self->vfptr.term = xs_sock_term;
@@ -89,10 +111,27 @@ int xs_sock_init (xs_sock *self)
     self->type = -1;
 
     xs_mutex_init (&self->sync);
+    rc = pthread_cond_init (&self->writeable, NULL);
+    errnum_assert (rc);
+    rc = pthread_cond_init (&self->readable, NULL);
+    errnum_assert (rc);
+
+int sv [2];
+rc = socketpair (AF_UNIX, SOCK_STREAM, 0, sv);
+
+    rc = xs_tcpout_init (&self->out, sv [0], xs_sock_send_done, self);
+    err_assert (rc);
 }
 
 void xs_sock_term (xs_sock *self)
 {
+    int rc;
+
+    xs_tcpout_term (&self->out);
+    rc = pthread_cond_destroy (&self->readable);
+    errnum_assert (rc);
+    rc = pthread_cond_destroy (&self->writeable);
+    errnum_assert (rc);
     xs_mutex_term (&self->sync);
 }
 
@@ -148,7 +187,46 @@ int xs_sock_shutdown (xs_sock *self, int how)
 
 int xs_sock_send (xs_sock *self, const void *buf, size_t len, int flags)
 {
-    return -ENOTSUP;
+    int rc;
+
+    /*  Convert buffer into a message. */
+    xs_msg msg;
+    rc = xs_msg_init (&msg, len);
+    if (rc < 0)
+        return rc;
+    memcpy (xs_msg_data (&msg), buf, len);
+
+    xs_mutex_lock (&self->sync);
+    while (1) {
+
+        /*  Start the send operation. */
+        rc = xs_tcpout_send (&self->out, &msg);
+
+        /*  If send succeeded synchronously, we can return immediately. */
+        if (likely (rc == 0)) {
+            xs_mutex_unlock (&self->sync);
+            return (int) len;
+        }
+
+        /*  If the asynchronous send operation is pending, we can return
+            immediately, however, we have to mark the connection is not
+            writeable at the moment. */
+        if (rc == -EINPROGRESS) {
+            xs_mutex_unlock (&self->sync);
+            return (int) len;
+        }
+
+        /*  In send is non-blocking and we cannot send, return to the caller. */
+        xs_assert (rc == -EAGAIN);
+        if (flags & XS_DONTWAIT) {
+            xs_mutex_unlock (&self->sync);
+            return -EAGAIN;
+        }
+
+        /*  Wait till socket becomes writeable. */
+        rc = pthread_cond_wait (&self->writeable, &self->sync);
+        errnum_assert (rc);
+    }
 }
 
 int xs_sock_recv (xs_sock *self, void *buf, size_t len, int flags)

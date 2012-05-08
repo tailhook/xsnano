@@ -57,12 +57,11 @@ void xs_msg_term (xs_msg *self)
         /*  TODO: This should be an atomic operation! */
         self->lmsg.content->refcnt--;
         if (self->lmsg.content->refcnt)
-            return 0;
+            return;
     }
 
     free (self->lmsg.content);
     self->base.type = 0;
-    return 0;
 }
 
 unsigned char *xs_msg_data (xs_msg *self)
@@ -77,5 +76,15 @@ size_t xs_msg_size (xs_msg *self)
     if (self->base.type == XS_MSGTYPE_VSM)
         return self->vsm.size;
     return self->lmsg.content->size;
+}
+
+void xs_msg_move (xs_msg *self, xs_msg *src)
+{
+    int rc;
+
+    xs_msg_term (self);
+    *self = *src;
+    rc = xs_msg_init (src, 0);
+    errno_assert (rc == 0);
 }
 

@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 /*  Include XS header to define XS-specific error codes. */
 #include "../include/xs.h"
@@ -42,11 +43,32 @@
         }\
     } while (0)
 
+/*  Checks the error code, assuming the negative numbers represent errors. */
+#define err_assert(x) \
+    do {\
+        if (unlikely (x < 0)) {\
+            fprintf (stderr, "%s (%s:%d)\n", xs_err_strerror (-(x)),\
+                __FILE__, __LINE__);\
+            xs_err_abort ();\
+        }\
+    } while (0)
+
+
 /*  Checks whether memory allocation was successful. */
 #define alloc_assert(x) \
     do {\
         if (unlikely (!x)) {\
             fprintf (stderr, "Out of memory (%s:%d)\n",\
+                __FILE__, __LINE__);\
+            xs_err_abort ();\
+        }\
+    } while (0)
+
+/*  Check the condition. If false prints out the errno. */
+#define errno_assert(x) \
+    do {\
+        if (unlikely (!(x))) {\
+            fprintf (stderr, "%s (%s:%d)\n", strerror (errno),\
                 __FILE__, __LINE__);\
             xs_err_abort ();\
         }\

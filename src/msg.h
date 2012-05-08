@@ -61,4 +61,6 @@ void xs_msg_term (xs_msg *self);
 unsigned char *xs_msg_data (xs_msg *self);
 size_t xs_msg_size (xs_msg *self);
 
+void xs_msg_move (xs_msg *self, xs_msg *src);
+
 #endif

@@ -24,8 +24,10 @@
 #define XS_SOCK_INCLUDED
 
 #include <stddef.h>
+#include <pthread.h>
 
 #include "mutex.h"
+#include "tcpout.h"
 
 typedef struct xs_sock_
 {
@@ -34,7 +36,7 @@ typedef struct xs_sock_
         int (*setopt) (struct xs_sock_ *self, int level, int option,
             const void *optval, size_t optvallen);
         int (*getopt) (struct xs_sock_ *self, int level, int option,
-            const void *optval, size_t *optvallen);
+            void *optval, size_t *optvallen);
     } vfptr;
 
     /*  Socket type (XS_PUB, XS_SUB, XS_REQ, XS_REP or similar). */
@@ -43,6 +45,15 @@ typedef struct xs_sock_
     /*  Critical section around the whole socket object --
         except for asynchronous operations. */
     xs_mutex sync;
+
+    /*  "Ready for writing" condition variable. */
+    pthread_cond_t writeable;
+
+    /*  "Ready for reading" condition variable. */
+    pthread_cond_t readable;
+
+    /*  Outbound socket. */
+    xs_tcpout out;
 } xs_sock;
 
 int xs_sock_alloc (xs_sock **self, int type);

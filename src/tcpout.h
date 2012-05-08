@@ -20,34 +20,26 @@
     IN THE SOFTWARE.
 */
 
-#include <assert.h>
-#include <stdio.h>
+#ifndef XS_TCPOUT_INCLUDED
+#define XS_TCPOUT_INCLUDED
 
-#include "../include/xs.h"
+#include <pthread.h>
 
-int main ()
-{
-    int rc;
-    int s;
+#include "msg.h"
 
-    printf ("basic test running...\n");
+typedef struct {
+    int fd;
+    int busy;
+    xs_msg msg;
+    int sent;
+    pthread_t worker;
+    void (*done) (void*);
+    void *arg;
+} xs_tcpout;
 
-    rc = xs_init ();
-    assert (rc == 0);
+int xs_tcpout_init (xs_tcpout *self, int fd, void (*done) (void*), void *arg);
+void xs_tcpout_term (xs_tcpout *self);
 
-    s = xs_socket (XS_XPUB);
-    assert (s >= 0);
+int xs_tcpout_send (xs_tcpout *self, xs_msg *msg);
 
-    while (1) {
-        rc = xs_send (s, "ABC", 3, 0);
-        assert (rc == 3);
-    }
-
-    rc = xs_close (s);
-    assert (rc == 0);
-
-    rc = xs_term ();
-    assert (rc == 0);
-
-    return 0;
-}
+#endif

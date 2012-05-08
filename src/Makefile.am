@@ -12,6 +12,7 @@ libxs_la_SOURCES = \
     pub.h pub.c \
     sock.h sock.c \
     sub.h sub.c \
+    tcpout.h tcpout.c \
     xpub.h xpub.c \
     xsub.h xsub.c
 
