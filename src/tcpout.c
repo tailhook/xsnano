@@ -27,20 +27,20 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <fcntl.h>
-#include <string.h>
 
 #include "tcpout.h"
+#include "wire.h"
 #include "err.h"
 
-static int xs_tcpout_write (xs_tcpout *self, int block)
+static int xs_tcpout_write (xs_tcpout *self)
 {
     ssize_t nbytes;
-    int flags = block ? 0 : MSG_DONTWAIT;
     size_t iovlen = 0;
     struct iovec iov [2];
-    unsigned char sizebuf [8] = {0};
+    unsigned char sizebuf [8];
 
     if (self->sent < 8) {
+        xs_putll (sizebuf, xs_msg_size (&self->msg));
         iov [0].iov_base = sizebuf + self->sent;
         iov [0].iov_len = 8 - self->sent;
         iov [1].iov_base = xs_msg_data (&self->msg);
@@ -53,8 +53,9 @@ static int xs_tcpout_write (xs_tcpout *self, int block)
         iovlen = 1;        
     }
 
+    /*  Push as much data as possible to the network. */
     struct msghdr hdr = {NULL, 0, iov, iovlen, NULL, 0, 0};
-    nbytes = sendmsg (self->fd, &hdr, flags | MSG_NOSIGNAL);
+    nbytes = sendmsg (self->fd, &hdr, MSG_DONTWAIT | MSG_NOSIGNAL);
 
     /*  Sanitation of the result. */
     if (unlikely (nbytes == 0)) {
@@ -84,9 +85,13 @@ static void *xs_tcpout_worker (void *arg)
     int rc;
     xs_tcpout *self = (xs_tcpout*) arg;
 
+printf ("worker!\n");
+
     /*  Send the data. */
-    rc = xs_tcpout_write (self, 1);
+    rc = xs_tcpout_write (self);
     err_assert (rc);
+
+    /* TODO: If not fully sent, start polling for OUT here. */
 
     self->busy = 0;
 
@@ -122,7 +127,7 @@ int xs_tcpout_send (xs_tcpout *self, xs_msg *msg)
     self->sent = 0;
 
     /*  Try to send the message in a synchronous manner. */
-    rc = xs_tcpout_write (self, 0);
+    rc = xs_tcpout_write (self);
 
     /*  Start the asynchronous operation. */
     if (rc == -EAGAIN) {
