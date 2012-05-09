@@ -23,3 +23,4 @@ src/Makefile.in
 tests/Makefile
 tests/Makefile.in
 tests/basic
+/build
