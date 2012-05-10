@@ -83,7 +83,7 @@ int xs_instream_recv (xs_instream *self, xs_msg *msg)
 
     if (nbytes < 8) {
         self->recvd = nbytes;
-        xs_instream_launch_async (self);
+        /*  TODO: xs_instream_launch_async (self); */
         return -EINPROGRESS;
     }
 
@@ -104,7 +104,7 @@ int xs_instream_recv (xs_instream *self, xs_msg *msg)
 
     if (nbytes < xs_msg_size (&self->msg)) {
         self->recvd = nbytes + 8;
-        xs_instream_launch_async (self);
+        /*  TODO: xs_instream_launch_async (self); */
         return -EINPROGRESS;
     }
 

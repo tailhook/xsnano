@@ -20,13 +20,29 @@
     IN THE SOFTWARE.
 */
 
-#ifndef XS_WIRE_INCLUDED
-#define XS_WIRE_INCLUDED
+#include "wire.h"
 
-#include <stdint.h>
+uint64_t xs_getll (unsigned char *buf)
+{
+    return (((uint64_t) buf [0]) << 56) |
+           (((uint64_t) buf [1]) << 48) |
+           (((uint64_t) buf [2]) << 40) |
+           (((uint64_t) buf [3]) << 32) |
+           (((uint64_t) buf [4]) << 24) |
+           (((uint64_t) buf [5]) << 16) |
+           (((uint64_t) buf [6]) << 8) |
+           (((uint64_t) buf [7] << 0));
+}
 
-uint64_t xs_getll (unsigned char *buf);
-void xs_putll (unsigned char *buf, uint64_t val);
-
-#endif
+void xs_putll (unsigned char *buf, uint64_t val)
+{
+    buf [0] = (unsigned char) ((val >> 56) & 0xff);
+    buf [1] = (unsigned char) ((val >> 48) & 0xff);
+    buf [2] = (unsigned char) ((val >> 40) & 0xff);
+    buf [3] = (unsigned char) ((val >> 32) & 0xff);
+    buf [4] = (unsigned char) ((val >> 24) & 0xff);
+    buf [5] = (unsigned char) ((val >> 16) & 0xff);
+    buf [6] = (unsigned char) ((val >> 8) & 0xff);
+    buf [7] = (unsigned char) (val & 0xff);
+}
 

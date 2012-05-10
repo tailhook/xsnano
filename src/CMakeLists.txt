@@ -9,6 +9,7 @@ add_library(xs SHARED
     sock.c
     sub.c
     outstream.c
+    wire.c
     xpub.c
     xsub.c
     )
