@@ -2,12 +2,13 @@ add_library(xs SHARED
     xs.c
     ctx.c
     err.c
+    instream.c
     msg.c
     mutex.c
     pub.c
     sock.c
     sub.c
-    tcpout.c
+    outstream.c
     xpub.c
     xsub.c
     )
