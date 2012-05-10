@@ -20,26 +20,38 @@
     IN THE SOFTWARE.
 */
 
-#ifndef XS_TCPOUT_INCLUDED
-#define XS_TCPOUT_INCLUDED
+#ifndef XS_OUTSTREAM_INCLUDED
+#define XS_OUTSTREAM_INCLUDED
 
 #include <pthread.h>
 
 #include "msg.h"
 
 typedef struct {
+
+    /*  The underlying socket. */
     int fd;
+
+    /*  If 1 there is asynchronous write going on in the background. */
     int busy;
+
+    /*  Message being sent and number of bytes already sent. */
     xs_msg msg;
     int sent;
+
+    /*  Thread handling the asynchronous operations. */    
     pthread_t worker;
+
+    /*  Callback to be invoked when asynchronous send succeeds. */
     void (*done) (void*);
     void *arg;
-} xs_tcpout;
 
-int xs_tcpout_init (xs_tcpout *self, int fd, void (*done) (void*), void *arg);
-void xs_tcpout_term (xs_tcpout *self);
+} xs_outstream;
 
-int xs_tcpout_send (xs_tcpout *self, xs_msg *msg);
+int xs_outstream_init (xs_outstream *self, int fd, void (*done) (void*),
+    void *arg);
+void xs_outstream_term (xs_outstream *self);
+
+int xs_outstream_send (xs_outstream *self, xs_msg *msg);
 
 #endif

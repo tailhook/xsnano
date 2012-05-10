@@ -45,7 +45,7 @@ void xs_sock_send_done (void *arg)
 
     xs_mutex_lock (&self->sync);
 
-    /*  TODO: Mark the tcpout as readable. */
+    /*  TODO: Mark the outstream as readable. */
 
     /*  Release the threads waiting to send. */
     rc = pthread_cond_broadcast (&self->writeable);
@@ -119,7 +119,7 @@ int xs_sock_init (xs_sock *self)
 int sv [2];
 rc = socketpair (AF_UNIX, SOCK_STREAM, 0, sv);
 
-    rc = xs_tcpout_init (&self->out, sv [0], xs_sock_send_done, self);
+    rc = xs_outstream_init (&self->out, sv [0], xs_sock_send_done, self);
     err_assert (rc);
 }
 
@@ -127,7 +127,7 @@ void xs_sock_term (xs_sock *self)
 {
     int rc;
 
-    xs_tcpout_term (&self->out);
+    xs_outstream_term (&self->out);
     rc = pthread_cond_destroy (&self->readable);
     errnum_assert (rc);
     rc = pthread_cond_destroy (&self->writeable);
@@ -200,7 +200,7 @@ int xs_sock_send (xs_sock *self, const void *buf, size_t len, int flags)
     while (1) {
 
         /*  Start the send operation. */
-        rc = xs_tcpout_send (&self->out, &msg);
+        rc = xs_outstream_send (&self->out, &msg);
 
         /*  If send succeeded synchronously, we can return immediately. */
         if (likely (rc == 0)) {

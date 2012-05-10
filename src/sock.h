@@ -27,7 +27,7 @@
 #include <pthread.h>
 
 #include "mutex.h"
-#include "tcpout.h"
+#include "outstream.h"
 
 typedef struct xs_sock_
 {
@@ -53,7 +53,7 @@ typedef struct xs_sock_
     pthread_cond_t readable;
 
     /*  Outbound socket. */
-    xs_tcpout out;
+    xs_outstream out;
 } xs_sock;
 
 int xs_sock_alloc (xs_sock **self, int type);

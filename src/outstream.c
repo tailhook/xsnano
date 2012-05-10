@@ -28,11 +28,11 @@
 #include <netdb.h>
 #include <fcntl.h>
 
-#include "tcpout.h"
+#include "outstream.h"
 #include "wire.h"
 #include "err.h"
 
-static int xs_tcpout_write (xs_tcpout *self)
+static int xs_outstream_write (xs_outstream *self)
 {
     ssize_t nbytes;
     size_t iovlen = 0;
@@ -80,15 +80,13 @@ static int xs_tcpout_write (xs_tcpout *self)
     return -EAGAIN;
 }
 
-static void *xs_tcpout_worker (void *arg)
+static void *xs_outstream_worker (void *arg)
 {
     int rc;
-    xs_tcpout *self = (xs_tcpout*) arg;
-
-printf ("worker!\n");
+    xs_outstream *self = (xs_outstream*) arg;
 
     /*  Send the data. */
-    rc = xs_tcpout_write (self);
+    rc = xs_outstream_write (self);
     err_assert (rc);
 
     /* TODO: If not fully sent, start polling for OUT here. */
@@ -101,7 +99,8 @@ printf ("worker!\n");
     return NULL;
 }
 
-int xs_tcpout_init (xs_tcpout *self, int fd, void (*done) (void*), void *arg)
+int xs_outstream_init (xs_outstream *self, int fd, void (*done) (void*),
+    void *arg)
 {
     self->fd = fd;
     self->busy = 0;
@@ -109,12 +108,12 @@ int xs_tcpout_init (xs_tcpout *self, int fd, void (*done) (void*), void *arg)
     self->arg = arg;
 }
 
-void xs_tcpout_term (xs_tcpout *self)
+void xs_outstream_term (xs_outstream *self)
 {
     /*  TODO: Cancel async operations here. */
 }
 
-int xs_tcpout_send (xs_tcpout *self, xs_msg *msg)
+int xs_outstream_send (xs_outstream *self, xs_msg *msg)
 {
     int rc;
 
@@ -127,12 +126,12 @@ int xs_tcpout_send (xs_tcpout *self, xs_msg *msg)
     self->sent = 0;
 
     /*  Try to send the message in a synchronous manner. */
-    rc = xs_tcpout_write (self);
+    rc = xs_outstream_write (self);
 
     /*  Start the asynchronous operation. */
     if (rc == -EAGAIN) {
         self->busy = 1;
-        rc = pthread_create (&self->worker, NULL, xs_tcpout_worker, self);
+        rc = pthread_create (&self->worker, NULL, xs_outstream_worker, self);
         errnum_assert (rc);
         return -EINPROGRESS;
     }
