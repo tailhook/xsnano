@@ -1,0 +1,20 @@
+This is an exprimental project to test various possible large-scale changes
+to Crossroads I/O project.
+
+Namely, following changes are being tested:
+
+1. Different threading model. The idea is to do all the processing in the
+   application threads and only offload it to a worker thread when
+   the synchronous operation would block (IOCP-style).
+
+2. The code is MIT-licensed (as opposed to LGPL) to test how hard would it be
+   to change the licensing.
+
+3. It's written in C rather than C++. The idea is to find out how much would
+   this simplify the codebase. Removing the dependency on libstdc++ is an
+   interesting side effect.
+
+4. Build system is CMake rather than autotools. CMake is easier to use than
+   autotools and have an advantage of working on Windows, which would remove
+   the need for maintaining two separate build systems. This project should
+   test whether CMake is an viable option.
