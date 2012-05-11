@@ -38,17 +38,33 @@
 #include "xpub.h"
 #include "xsub.h"
 
-void xs_sock_send_done (void *arg)
+static void xs_sock_send_done (void *arg)
 {
     int rc;
     xs_sock *self = (xs_sock*) arg;
 
     xs_mutex_lock (&self->sync);
 
-    /*  TODO: Mark the outstream as readable. */
+    /*  TODO: Mark the outstream as writeable. */
 
     /*  Release the threads waiting to send. */
     rc = pthread_cond_broadcast (&self->writeable);
+    errnum_assert (rc);
+
+    xs_mutex_unlock (&self->sync);
+}
+
+static void xs_sock_recv_done (void *arg)
+{
+    int rc;
+    xs_sock *self = (xs_sock*) arg;
+
+    xs_mutex_lock (&self->sync);
+
+    /*  TODO: Mark the instream as readable. */
+
+    /*  Release the threads waiting to send. */
+    rc = pthread_cond_broadcast (&self->readable);
     errnum_assert (rc);
 
     xs_mutex_unlock (&self->sync);
@@ -116,10 +132,15 @@ int xs_sock_init (xs_sock *self)
     rc = pthread_cond_init (&self->readable, NULL);
     errnum_assert (rc);
 
-int sv [2];
-rc = socketpair (AF_UNIX, SOCK_STREAM, 0, sv);
+    /*  TODO: To test the code, for now we simply connect read side of the
+        socket to the write side viax UNIX pipe. */
+    int sv [2];
+    rc = socketpair (AF_UNIX, SOCK_STREAM, 0, sv);
+    errno_assert (rc == 0);
 
     rc = xs_outstream_init (&self->out, sv [0], xs_sock_send_done, self);
+    err_assert (rc);
+    rc = xs_instream_init (&self->in, sv [0], xs_sock_recv_done, self);
     err_assert (rc);
 }
 
@@ -127,6 +148,7 @@ void xs_sock_term (xs_sock *self)
 {
     int rc;
 
+    xs_instream_term (&self->in);
     xs_outstream_term (&self->out);
     rc = pthread_cond_destroy (&self->readable);
     errnum_assert (rc);
@@ -231,6 +253,34 @@ int xs_sock_send (xs_sock *self, const void *buf, size_t len, int flags)
 
 int xs_sock_recv (xs_sock *self, void *buf, size_t len, int flags)
 {
-    return -ENOTSUP;
+    int rc;
+    xs_msg msg;
+    int msgsize;
+
+    rc = xs_msg_init (&msg, 0);
+    err_assert (rc);
+
+    xs_mutex_lock (&self->sync);
+    while (1) {
+
+        /*  Start the recv operation. */
+        rc = xs_instream_recv (&self->in, &msg);
+
+        /*  If recv succeeded synchronously, we can return immediately. */
+        if (likely (rc == 0))
+            break;
+
+        /*  Wait till socket becomes readable. */
+        rc = pthread_cond_wait (&self->readable, &self->sync);
+        errnum_assert (rc);
+    }
+    xs_mutex_unlock (&self->sync);
+
+    /*  Copy the data from the message to the user-supplied buffer. */
+    msgsize = (int) xs_msg_size (&msg);
+    memcpy (buf, xs_msg_data (&msg), len < msgsize ? len : msgsize);
+    xs_msg_term (&msg);
+    
+    return msgsize;
 }
 

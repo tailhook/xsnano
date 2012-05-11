@@ -22,6 +22,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "../include/xs.h"
 
@@ -38,10 +39,14 @@ int main ()
     s = xs_socket (XS_XPUB);
     assert (s >= 0);
 
-    while (1) {
-        rc = xs_send (s, "ABC", 3, 0);
-        assert (rc == 3);
-    }
+    rc = xs_send (s, "ABC", 3, 0);
+    assert (rc == 3);
+
+    sleep (1);
+
+    char buf [32];
+    rc = xs_recv (s, buf, sizeof (buf), 0);
+    assert (rc == 3);
 
     rc = xs_close (s);
     assert (rc == 0);

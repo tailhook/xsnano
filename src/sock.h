@@ -28,6 +28,7 @@
 
 #include "mutex.h"
 #include "outstream.h"
+#include "instream.h"
 
 typedef struct xs_sock_
 {
@@ -52,8 +53,11 @@ typedef struct xs_sock_
     /*  "Ready for reading" condition variable. */
     pthread_cond_t readable;
 
-    /*  Outbound socket. */
+    /*  Outbound underlying socket. */
     xs_outstream out;
+
+    /*  Inbound underlying socket. */
+    xs_instream in;
 } xs_sock;
 
 int xs_sock_alloc (xs_sock **self, int type);
