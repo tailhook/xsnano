@@ -27,6 +27,11 @@
 
 #include "msg.h"
 
+#if defined SO_NOSIGPIPE
+    /*   Define a phony MSG_NOSIGNAL for OSX, which does not include it */
+    #define MSG_NOSIGNAL 0
+#endif
+
 typedef struct {
 
     /*  The underlying socket. */
