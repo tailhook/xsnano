@@ -140,8 +140,10 @@ int xs_sock_init (xs_sock *self)
 
     rc = xs_outstream_init (&self->out, sv [0], xs_sock_send_done, self);
     err_assert (rc);
-    rc = xs_instream_init (&self->in, sv [0], xs_sock_recv_done, self);
+    rc = xs_instream_init (&self->in, sv [1], xs_sock_recv_done, self);
     err_assert (rc);
+
+    return 0;
 }
 
 void xs_sock_term (xs_sock *self)
