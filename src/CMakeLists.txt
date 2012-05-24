@@ -12,6 +12,8 @@ add_library(xs SHARED
     wire.c
     xpub.c
     xsub.c
+    plugin.c
+    stdplugins.c
     )
 target_link_libraries(xs ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS xs DESTINATION lib)
