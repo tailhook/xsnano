@@ -25,12 +25,19 @@
 #include "ctx.h"
 #include "err.h"
 #include "likely.h"
+#include "plugin.h"
+#include "stdplugins.h"
+
 
 int xs_ctx_init (xs_ctx *self)
 {
     self->socks_num = 512;
     self->socks = malloc (self->socks_num * sizeof (xs_sock*));
     alloc_assert (self->socks);
+
+    int rc = xs_add_standard_plugins (self);
+    err_assert (rc);  // standard plugins should always load
+
     xs_mutex_init (&self->sync);
     return 0;
 }
