@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012 250bpm s.r.o.
+    Copyright (c) 2012 Paul Colomiets
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to
@@ -20,39 +20,31 @@
     IN THE SOFTWARE.
 */
 
-#include <assert.h>
-#include <stdio.h>
-#include <unistd.h>
+#ifndef XS_PIPE_INCLUDED
+#define XS_PIPE_INCLUDED
 
-#include "xs.h"
+#include <sys/queue.h>
 
-int main ()
-{
-    int rc;
-    int s;
+#define XS_DECLARE_PIPE(type, granularity, pipetype) \
+    struct xs_##pipetype##_chunk { \
+        TAILQ_ENTRY(xs_##pipetype##_chunk) list; \
+        type data[granularity]; \
+    } xs_##pipetype##_chunk; \
+    struct { \
+        TAILQ_HEAD(xs_##pipetype##_list, xs_##pipetype##_chunk) chunks;\
+        int begin_pos; \
+        int end_pos; \
+    } pipetype; \
+    inline int xs_##pipetype##_init(pipetype
 
-    printf ("basic test running...\n");
+#define XS_PIPE_INIT(pipe) do {\
+    TAILQ_INIT(&(pipe)->chunks); \
+    (pipe)->begin_pos = 0; \
+    (pipe)->end_pos = 0; \
+    } while (0); \
 
-    rc = xs_init ();
-    assert (rc == 0);
+XS_DECLARE_PIPE(int, 16, int_pipe);
 
-    s = xs_socket (XS_XPUB);
-    assert (s >= 0);
 
-    rc = xs_send (s, "ABC", 3, 0);
-    assert (rc == 3);
+#endif // XS_PIPE_INCLUDED
 
-    sleep (1);
-
-    char buf [32];
-    rc = xs_recv (s, buf, sizeof (buf), 0);
-    assert (rc == 3);
-
-    rc = xs_close (s);
-    assert (rc == 0);
-
-    rc = xs_term ();
-    assert (rc == 0);
-
-    return 0;
-}
