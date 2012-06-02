@@ -1,6 +1,11 @@
-include_directories(${XSNANO_SOURCE_DIR}/include)
-link_directories(${XSNANO_BINARY_DIR}/src)
+include_directories(${xsnano_SOURCE_DIR}/include ${xsnano_SOURCE_DIR}/src)
+link_directories(${xsnano_BINARY_DIR}/src)
 
-add_executable(basic basic.c)
-target_link_libraries(basic xs)
-add_test(basic basic)
+macro(add_libxs_test NAME)
+    add_executable(${NAME} ${NAME}.c)
+    target_link_libraries(${NAME} xs)
+    add_test(${NAME} ${NAME})
+endmacro(add_libxs_test)
+
+add_libxs_test(basic)
+add_libxs_test(pipe)

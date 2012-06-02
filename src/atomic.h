@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012 250bpm s.r.o.
+    Copyright (c) 2012 Paul Colomiets
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to
@@ -20,39 +20,15 @@
     IN THE SOFTWARE.
 */
 
-#include <assert.h>
-#include <stdio.h>
-#include <unistd.h>
+#ifndef XS_ATOMIC_INCLUDED
+#define XS_ATOMIC_INCLUDED
 
-#include "xs.h"
 
-int main ()
-{
-    int rc;
-    int s;
+#define XS_ATOMIC_FETCH_ADD(target, value) \
+    __sync_fetch_and_add (&(target), (value))
 
-    printf ("basic test running...\n");
+#define XS_ATOMIC_SUB_FETCH(target, value) \
+    __sync_sub_and_fetch (&(target), (value))
 
-    rc = xs_init ();
-    assert (rc == 0);
 
-    s = xs_socket (XS_XPUB);
-    assert (s >= 0);
-
-    rc = xs_send (s, "ABC", 3, 0);
-    assert (rc == 3);
-
-    sleep (1);
-
-    char buf [32];
-    rc = xs_recv (s, buf, sizeof (buf), 0);
-    assert (rc == 3);
-
-    rc = xs_close (s);
-    assert (rc == 0);
-
-    rc = xs_term ();
-    assert (rc == 0);
-
-    return 0;
-}
+#endif // XS_ATOMIC_INCLUDED
