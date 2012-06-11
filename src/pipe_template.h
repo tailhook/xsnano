@@ -72,15 +72,19 @@
 #define XS__NAME2(a, b) a ## _ ## b
 #define XS__NAME1(a, b) XS__NAME2 (a, b)
 #define XS__NAME(name) XS__NAME1 (XS_PIPE_NAME, name)
-
+//  The following macros is not defined in sys/queue.h as it's unsafe to use it
+//  when there are no elements in the queue. We always ensure that there is at
+//  least one chunk in the queue, so it's not a problem
+#define XS__SIMPLEQ_LAST(head, type, field) \
+    (struct type *)((char *)(head)->sqh_last - offsetof(type, field))
 
 typedef struct XS__NAME (chunk) {
-    TAILQ_ENTRY (XS__NAME(chunk)) list;
+    SIMPLEQ_ENTRY (XS__NAME(chunk)) list;
     XS_PIPE_TYPE data [XS_PIPE_GRANULARITY];
 } XS__NAME(chunk);
 
 typedef struct {
-    TAILQ_HEAD (XS__NAME (list), XS__NAME (chunk)) chunks;
+    SIMPLEQ_HEAD (XS__NAME (list), XS__NAME (chunk)) chunks;
     int begin_pos;
     int end_pos;
 
@@ -102,8 +106,8 @@ inline int XS__NAME (init) (XS_PIPE_NAME *pipe) {
     XS__NAME (chunk) *chunk = malloc (sizeof (XS__NAME (chunk)));
     if(!chunk)
         return -ENOMEM;
-    TAILQ_INIT (&pipe->chunks);
-    TAILQ_INSERT_TAIL (&pipe->chunks, chunk, list);
+    SIMPLEQ_INIT (&pipe->chunks);
+    SIMPLEQ_INSERT_TAIL (&pipe->chunks, chunk, list);
     pipe->begin_pos = 0;
     pipe->end_pos = 0;
     pipe->to_read = 0;
@@ -115,8 +119,8 @@ inline int XS__NAME (init) (XS_PIPE_NAME *pipe) {
 
 inline int XS__NAME (free) (XS_PIPE_NAME *pipe) {
     XS__NAME (chunk) *chunk, *next;
-    for (chunk = TAILQ_FIRST (&pipe->chunks); chunk; chunk=next) {
-        next = TAILQ_NEXT (chunk, list);
+    for (chunk = SIMPLEQ_FIRST (&pipe->chunks); chunk; chunk=next) {
+        next = SIMPLEQ_NEXT (chunk, list);
         free(chunk);
     }
     return 0;
@@ -128,10 +132,10 @@ inline int XS__NAME (quick_push) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE value) {
         chunk = malloc (sizeof (XS__NAME (chunk)));
         if(!chunk)
             return -ENOMEM;
-        TAILQ_INSERT_TAIL (&pipe->chunks, chunk, list);
+        SIMPLEQ_INSERT_TAIL (&pipe->chunks, chunk, list);
         pipe->end_pos = 0;
     } else {
-        chunk = TAILQ_LAST (&pipe->chunks, XS__NAME (list));
+        chunk = XS__SIMPLEQ_LAST (&pipe->chunks, XS__NAME (chunk), list);
     }
     chunk->data [pipe->end_pos++] = value;
     pipe->to_write ++;
@@ -151,9 +155,11 @@ inline int XS__NAME (flush) (XS_PIPE_NAME *pipe) {
 
 inline int XS__NAME (push) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE value) {
     int rc = XS__NAME (quick_push) (pipe, value);
-    if (rc)
+    if (rc) {
         return rc;
-    return XS__NAME (flush) (pipe);
+        }
+    rc = XS__NAME (flush) (pipe);
+    return rc;
 }
 
 inline int XS__NAME (_check_read) (XS_PIPE_NAME *pipe) {
@@ -164,8 +170,8 @@ inline int XS__NAME (_check_read) (XS_PIPE_NAME *pipe) {
             return -EAGAIN;
     }
     if(pipe->begin_pos >= XS_PIPE_GRANULARITY) {
-        XS__NAME (chunk) *chunk = TAILQ_FIRST(&pipe->chunks);
-        TAILQ_REMOVE (&pipe->chunks, chunk, list);
+        XS__NAME (chunk) *chunk = SIMPLEQ_FIRST(&pipe->chunks);
+        SIMPLEQ_REMOVE_HEAD (&pipe->chunks, list);
         free(chunk);
         pipe->begin_pos = 0;
     }
@@ -177,7 +183,7 @@ inline int XS__NAME (pop) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE *value) {
     if(rc)
         return rc;
     if(value)
-        *value = TAILQ_FIRST (&pipe->chunks)->data [pipe->begin_pos];
+        *value = SIMPLEQ_FIRST (&pipe->chunks)->data [pipe->begin_pos];
     pipe->begin_pos ++;
     pipe->to_read --;
     return 0;
@@ -187,7 +193,7 @@ inline int XS__NAME (front) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE *value) {
     int rc = XS__NAME (_check_read) (pipe);
     if(rc)
         return rc;
-    *value = TAILQ_FIRST (&pipe->chunks)->data [pipe->begin_pos];
+    *value = SIMPLEQ_FIRST (&pipe->chunks)->data [pipe->begin_pos];
     return 0;
 }
 
@@ -196,6 +202,7 @@ inline int XS__NAME (front) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE *value) {
 #undef XS__NAME
 #undef XS__NAME1
 #undef XS__NAME2
+#undef XS__SIMPLEQ_LAST
 
 // undefining user-defined parameters
 #undef XS_PIPE_TYPE
