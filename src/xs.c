@@ -60,6 +60,18 @@ int xs_term (void)
     return 0;
 }
 
+int xs_setctxopt (int option, const void *value, size_t value_len)
+{
+    int rc;
+
+    rc = xs_ctx_setopt (&ctx, option, value, value_len);
+    if (unlikely (rc < 0)) {
+        errno = -rc;
+        return -1;
+    }
+    return 0;
+}
+
 int xs_socket (int type)
 {
     int s;
@@ -70,7 +82,7 @@ int xs_socket (int type)
         return -1;
     }
     return s;
-    
+
 }
 
 int xs_close (int s)

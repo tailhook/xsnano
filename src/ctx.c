@@ -38,12 +38,40 @@ int xs_ctx_init (xs_ctx *self)
     int rc = xs_add_standard_plugins (self);
     err_assert (rc);  // standard plugins should always load
 
+    rc = xs_threadpool_init (&self->threadpool);
+    err_assert (rc);
+
     xs_mutex_init (&self->sync);
     return 0;
 }
 
+int xs_ctx_setopt (xs_ctx *self, int option,
+                   const void *value, size_t value_len) {
+    switch (option) {
+
+    case XS_IO_THREADS:
+        if (value_len != sizeof(int))
+            return -EINVAL;
+        if (value == NULL)
+            return -EFAULT;
+        return xs_threadpool_resize (&self->threadpool, *(int *)value);
+
+    default:
+        return -EINVAL;
+
+    }
+}
+
 int xs_ctx_term (xs_ctx *self)
 {
+    int rc;
+
+    // Let's shutdown thread pool
+    xs_mutex_lock (&self->sync);
+    rc = xs_threadpool_shutdown (&self->threadpool);
+    err_assert (rc);
+    xs_mutex_unlock (&self->sync);
+
     xs_mutex_term (&self->sync);
     free (self->socks);
     return 0;
@@ -55,6 +83,10 @@ int xs_ctx_socket (xs_ctx *self, int type)
     int rc;
 
     xs_mutex_lock (&self->sync);
+
+    rc = xs_threadpool_ensure_ready (&self->threadpool);
+    if(rc < 0)
+        return rc;
 
     //  TODO: Find the empty slot in O(1) time!
     for (s = 0; s != self->socks_num; ++s) {

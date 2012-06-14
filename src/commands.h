@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012 250bpm s.r.o.
+    Copyright (c) 2012 Paul Colomiets
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to
@@ -20,32 +20,25 @@
     IN THE SOFTWARE.
 */
 
-#ifndef XS_CTX_INCLUDED
-#define XS_CTX_INCLUDED
+#ifndef XS_COMMANDS_INCLUDED
+#define XS_COMMANDS_INCLUDED
 
-#include "sock.h"
-#include "mutex.h"
-#include "threadpool.h"
+enum xs_command_type {
+    //  A no-op command
+    XS_CMD_PING,
+    //  Shut down the thread, called on xs_term and
+    //  potentially on thread pool resize
+    XS_CMD_SHUTDOWN
+};
 
-typedef struct
-{
-    /*  Array of all available socket slots. Unoccupied socket slots contain a
-        NULL pointer. */
-    size_t socks_num;
-    xs_sock **socks;
+typedef struct {
+    enum xs_command_type cmd;
+    //  TBD
+} xs_command;
 
-    /*  Critical section wrapping the context object. */
-    xs_mutex sync;
+#define XS_PIPE_TYPE xs_command
+#define XS_PIPE_GRANULARITY 16
+#define XS_PIPE_NAME xs_cmdpipe
+#include "pipe_template.h"
 
-    xs_threadpool threadpool;
-} xs_ctx;
-
-int xs_ctx_init (xs_ctx *self);
-int xs_ctx_term (xs_ctx *self);
-int xs_ctx_setopt (xs_ctx *self, int option,
-                   const void *value, size_t value_len);
-
-int xs_ctx_socket (xs_ctx *self, int type);
-int xs_ctx_close (xs_ctx *self, int s);
-
-#endif
+#endif // XS_COMMANDS_INCLUDED

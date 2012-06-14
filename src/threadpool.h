@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012 250bpm s.r.o.
+    Copyright (c) 2012 Paul Colomiets
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to
@@ -20,32 +20,36 @@
     IN THE SOFTWARE.
 */
 
-#ifndef XS_CTX_INCLUDED
-#define XS_CTX_INCLUDED
+#ifndef XS_THREADPOOL_INCLUDED
+#define XS_THREADPOOL_INCLUDED
 
-#include "sock.h"
-#include "mutex.h"
-#include "threadpool.h"
+#include <pthread.h>
 
-typedef struct
-{
-    /*  Array of all available socket slots. Unoccupied socket slots contain a
-        NULL pointer. */
-    size_t socks_num;
-    xs_sock **socks;
+#include "commands.h"
 
-    /*  Critical section wrapping the context object. */
-    xs_mutex sync;
+enum xs_thread_status {
+    XS_THREAD_STARTING,
+    XS_THREAD_WORKING,
+    XS_THREAD_STOPPING,
+    XS_THREAD_STOPPED
+};
 
-    xs_threadpool threadpool;
-} xs_ctx;
+typedef struct {
+    pthread_t posix_id;
+    enum xs_thread_status status;
+    int load;
+    int signalfd;
+    xs_cmdpipe pipe;
+} xs_thread;
 
-int xs_ctx_init (xs_ctx *self);
-int xs_ctx_term (xs_ctx *self);
-int xs_ctx_setopt (xs_ctx *self, int option,
-                   const void *value, size_t value_len);
+typedef struct {
+    int num_threads;
+    xs_thread **threads;
+} xs_threadpool;
 
-int xs_ctx_socket (xs_ctx *self, int type);
-int xs_ctx_close (xs_ctx *self, int s);
+int xs_threadpool_init(xs_threadpool *pool);
+int xs_threadpool_ensure_ready(xs_threadpool *pool);
+int xs_threadpool_resize(xs_threadpool *pool, int size);
+int xs_threadpool_shutdown(xs_threadpool *pool);
 
-#endif
+#endif // XS_THREADPOOL_INCLUDED

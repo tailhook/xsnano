@@ -54,6 +54,7 @@
 #include <sys/queue.h>
 #include <malloc.h>
 #include <stdint.h>
+#include <errno.h>
 
 #include "atomic.h"
 
@@ -98,7 +99,8 @@ typedef struct {
     unsigned to_write;
 } XS_PIPE_NAME;
 
-inline int XS__NAME (init) (XS_PIPE_NAME *pipe) {
+
+static inline int XS__NAME (init) (XS_PIPE_NAME *pipe) {
     XS__NAME (chunk) *chunk = malloc (sizeof (XS__NAME (chunk)));
     if(!chunk)
         return -ENOMEM;
@@ -113,7 +115,7 @@ inline int XS__NAME (init) (XS_PIPE_NAME *pipe) {
     return 0;
 }
 
-inline int XS__NAME (free) (XS_PIPE_NAME *pipe) {
+static inline int XS__NAME (free) (XS_PIPE_NAME *pipe) {
     XS__NAME (chunk) *chunk, *next;
     for (chunk = TAILQ_FIRST (&pipe->chunks); chunk; chunk=next) {
         next = TAILQ_NEXT (chunk, list);
@@ -122,7 +124,7 @@ inline int XS__NAME (free) (XS_PIPE_NAME *pipe) {
     return 0;
 }
 
-inline int XS__NAME (quick_push) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE value) {
+static inline int XS__NAME (quick_push) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE value) {
     XS__NAME (chunk) *chunk;
     if (pipe->end_pos >= XS_PIPE_GRANULARITY) {
         chunk = malloc (sizeof (XS__NAME (chunk)));
@@ -138,7 +140,7 @@ inline int XS__NAME (quick_push) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE value) {
     return 0;
 }
 
-inline int XS__NAME (flush) (XS_PIPE_NAME *pipe) {
+static inline int XS__NAME (flush) (XS_PIPE_NAME *pipe) {
     if (pipe->to_write) {
         unsigned oldval = XS_ATOMIC_FETCH_ADD (pipe->buffer, pipe->to_write);
         pipe->to_write = 0;
@@ -149,14 +151,14 @@ inline int XS__NAME (flush) (XS_PIPE_NAME *pipe) {
     return 0;
 }
 
-inline int XS__NAME (push) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE value) {
+static inline int XS__NAME (push) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE value) {
     int rc = XS__NAME (quick_push) (pipe, value);
     if (rc)
         return rc;
     return XS__NAME (flush) (pipe);
 }
 
-inline int XS__NAME (_check_read) (XS_PIPE_NAME *pipe) {
+static inline int XS__NAME (_check_read) (XS_PIPE_NAME *pipe) {
     if(!pipe->to_read) {
         pipe->to_read = pipe->last_buffer = XS_ATOMIC_SUB_FETCH(
             pipe->buffer, pipe->last_buffer);
@@ -172,7 +174,7 @@ inline int XS__NAME (_check_read) (XS_PIPE_NAME *pipe) {
     return 0;
 }
 
-inline int XS__NAME (pop) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE *value) {
+static inline int XS__NAME (pop) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE *value) {
     int rc = XS__NAME (_check_read) (pipe);
     if(rc)
         return rc;
@@ -183,7 +185,7 @@ inline int XS__NAME (pop) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE *value) {
     return 0;
 }
 
-inline int XS__NAME (front) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE *value) {
+static inline int XS__NAME (front) (XS_PIPE_NAME *pipe, XS_PIPE_TYPE *value) {
     int rc = XS__NAME (_check_read) (pipe);
     if(rc)
         return rc;

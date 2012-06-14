@@ -141,13 +141,16 @@ XS_EXPORT int xs_term (void);
 #define XS_UNSUBSCRIBE 7
 #define XS_TYPE 16
 
+/*  Context options                                                           */
+#define XS_IO_THREADS 2
+
 /*  Send/recv options.                                                        */
 #define XS_DONTWAIT 1
 
 XS_EXPORT int xs_socket (int type);
 XS_EXPORT int xs_close (int s);
 XS_EXPORT int xs_setsockopt (int s, int level, int option, const void *optval,
-    size_t optvallen); 
+    size_t optvallen);
 XS_EXPORT int xs_getsockopt (int s, int level, int option, void *optval,
     size_t *optvallen);
 XS_EXPORT int xs_bind (int s, const char *addr);
