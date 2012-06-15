@@ -25,7 +25,7 @@
 #include "plugin.h"
 #include "ctx.h"
 
-int plug (xs_ctx *ctx, void *plugin) {
+int xs_plug (xs_ctx *ctx, void *plugin) {
     xs_base_plugin *plug = plugin;
 
     if (!plugin)

@@ -30,7 +30,7 @@ int xs_add_standard_plugins (xs_ctx *ctx) {
     int rc;
 
     // Plugin registration example:
-    //   rc = plug (ctx, tcp_plugin_struct);
+    //   rc = xs_plug (ctx, tcp_plugin_struct);
     //   if(rc < 0) return rc;
 
     return 0;
