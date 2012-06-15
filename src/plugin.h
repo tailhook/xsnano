@@ -31,6 +31,8 @@
 #define XS_PLUGIN_INCLUDED
 
 #define XS_PLUGIN_FILTER 1  // not implemented yet, but should reserve index
+#define XS_PLUGIN_PATTERN 2
+#define XS_PLUGIN_TRANSPORT 3
 
 typedef struct xs_base_plugin {
     int type;
