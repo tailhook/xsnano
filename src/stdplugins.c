@@ -23,15 +23,21 @@
 #include "stdplugins.h"
 #include "ctx.h"
 
-// Plugin include files
+// Pattern plugins
+#include "pair_pattern.h"
+
+// Transport plugins
+#include "inproc_transport.h"
 
 
 int xs_add_standard_plugins (xs_ctx *ctx) {
     int rc;
 
-    // Plugin registration example:
-    //   rc = xs_plug (ctx, tcp_plugin_struct);
-    //   if(rc < 0) return rc;
+    rc = xs_plug (ctx, xs_pair_pattern());
+    if(rc < 0) return rc;
+
+    rc = xs_plug (ctx, xs_inproc_transport());
+    if(rc < 0) return rc;
 
     return 0;
 }

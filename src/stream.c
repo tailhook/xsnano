@@ -20,35 +20,47 @@
     IN THE SOFTWARE.
 */
 
-#include <errno.h>
+#include "stream.h"
+#include "err.h"
 
-#include "plugin.h"
-#include "pattern_plugin.h"
-#include "pattern_func.h"
-#include "transport_plugin.h"
-#include "transport_func.h"
-#include "ctx.h"
-
-
-int xs_plug (void *context, void *plugin) {
-    xs_ctx *ctx = context;
-    xs_base_plugin *plug = plugin;
-
-    if (!plugin)
-        return -EFAULT;
-
-    if (plug->type <= 0 || plug->version <= 0)
-        return -EINVAL;
-
-    // here is actual plugin registration code
-    switch (plug->type) {
-    case XS_PLUGIN_PATTERN:
-        return xs_plug_pattern (ctx, (xs_pattern_plugin*) plugin);
-    case XS_PLUGIN_TRANSPORT:
-        return xs_plug_transport (ctx, (xs_transport_plugin*) plugin);
-    default:
-        return -ENOTSUP;
-    }
-
-    return -ENOTSUP;
+int xs_stream_send (void *stream, xs_msg *msg, int flags) {
+    return ((xs_stream *)stream)->plugin->send(stream, msg, flags);
 }
+
+int xs_stream_recv (void *stream, xs_msg *msg, int flags) {
+    return ((xs_stream *)stream)->plugin->recv(stream, msg, flags);
+}
+
+int xs_stream_create (void **stream) {
+    xs_stream *self = malloc (sizeof (xs_stream));
+    if(!self)
+        return -ENOMEM;
+    self->socket = NULL;
+    self->plugin = NULL;
+    *stream = self;
+    return 0;
+}
+
+void xs_stream_term (void *stream) {
+    xs_stream *self = stream;
+    xs_assert (!self->socket); // not implemented yet
+    xs_assert (!self->plugin); // not implemented yet
+    free(stream);
+}
+
+void xs_stream_set_plugin (void *stream, void *plugin) {
+    xs_stream *self = stream;
+    xs_assert (!self->plugin);
+    self->plugin = plugin;
+}
+
+void xs_stream_set_data (void *stream, void *data) {
+    xs_stream *self = stream;
+    self->userdata = data;
+}
+
+void *xs_stream_get_data (void *stream) {
+    xs_stream *self = stream;
+    return self->userdata;
+}
+

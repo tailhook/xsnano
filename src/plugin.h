@@ -33,10 +33,13 @@
 #define XS_PLUGIN_FILTER 1  // not implemented yet, but should reserve index
 #define XS_PLUGIN_PATTERN 2
 #define XS_PLUGIN_TRANSPORT 3
+#define XS_PLUGIN_STREAM 4
 
 typedef struct xs_base_plugin {
     int type;
     int version;
 } xs_base_plugin;
+
+int xs_plug (void *ctx, void *plugin);
 
 #endif // XS_PLUGIN_INCLUDED

@@ -23,139 +23,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* TODO: Remove */
-#include <sys/types.h>
-#include <sys/socket.h>
-
 #include "../include/xs.h"
 
 #include "sock.h"
 #include "err.h"
 #include "likely.h"
+#include "msg.h"
+#include "stream.h"
+#include "transport_func.h"
 
-#include "pub.h"
-#include "sub.h"
-#include "xpub.h"
-#include "xsub.h"
-
-static void xs_sock_send_done (void *arg)
-{
-    int rc;
-    xs_sock *self = (xs_sock*) arg;
-
-    xs_mutex_lock (&self->sync);
-
-    /*  TODO: Mark the outstream as writeable. */
-
-    /*  Release the threads waiting to send. */
-    rc = pthread_cond_broadcast (&self->writeable);
-    errnum_assert (rc);
-
-    xs_mutex_unlock (&self->sync);
-}
-
-static void xs_sock_recv_done (void *arg)
-{
-    int rc;
-    xs_sock *self = (xs_sock*) arg;
-
-    xs_mutex_lock (&self->sync);
-
-    /*  TODO: Mark the instream as readable. */
-
-    /*  Release the threads waiting to send. */
-    rc = pthread_cond_broadcast (&self->readable);
-    errnum_assert (rc);
-
-    xs_mutex_unlock (&self->sync);
-}
-
-int xs_sock_alloc (xs_sock **self, int type)
-{
-    int rc;
-
-    if (unlikely (!self))
-        return -EFAULT;
-
-    switch (type) {
-    case XS_PUB:
-        *self = malloc (sizeof (xs_pub));
-        alloc_assert (*self);
-        rc = xs_pub_init (*self);
-        break;
-    case XS_SUB:
-        *self = malloc (sizeof (xs_sub));
-        alloc_assert (*self);
-        rc = xs_sub_init (*self);
-        break;
-    case XS_XPUB:
-        *self = malloc (sizeof (xs_xpub));
-        alloc_assert (*self);
-        rc = xs_xpub_init (*self);
-        break;
-    case XS_XSUB:
-        *self = malloc (sizeof (xs_xsub));
-        alloc_assert (*self);
-        rc = xs_xsub_init (*self);
-        break;
-    default:
-        return -EINVAL;
-    }
-    if (unlikely (rc < 0)) {
-        free (*self);
-        *self = NULL;
-        return rc;
-    }
-    return 0;
-}
-
-void xs_sock_dealloc (xs_sock *self)
-{
-    self->vfptr.term (self);
-    free (self);
-}
 
 int xs_sock_init (xs_sock *self)
 {
-    int rc;
-
-    /*  Set virtual members to invalid values to catch any potential errors. */
-    memset (&self->vfptr, 0, sizeof (self->vfptr));
-    self->vfptr.term = xs_sock_term;
-    self->vfptr.setopt = xs_sock_setopt;
-    self->vfptr.getopt = xs_sock_getopt;
-    self->type = -1;
-
     xs_mutex_init (&self->sync);
-    rc = pthread_cond_init (&self->writeable, NULL);
-    errnum_assert (rc);
-    rc = pthread_cond_init (&self->readable, NULL);
-    errnum_assert (rc);
-
-    /*  TODO: To test the code, for now we simply connect read side of the
-        socket to the write side viax UNIX pipe. */
-    int sv [2];
-    rc = socketpair (AF_UNIX, SOCK_STREAM, 0, sv);
-    errno_assert (rc == 0);
-
-    rc = xs_outstream_init (&self->out, sv [0], xs_sock_send_done, self);
-    err_assert (rc);
-    rc = xs_instream_init (&self->in, sv [1], xs_sock_recv_done, self);
-    err_assert (rc);
-
     return 0;
 }
 
 void xs_sock_term (xs_sock *self)
 {
-    int rc;
-
-    xs_instream_term (&self->in);
-    xs_outstream_term (&self->out);
-    rc = pthread_cond_destroy (&self->readable);
-    errnum_assert (rc);
-    rc = pthread_cond_destroy (&self->writeable);
-    errnum_assert (rc);
     xs_mutex_term (&self->sync);
 }
 
@@ -196,12 +81,33 @@ int xs_sock_getopt (xs_sock *self, int level, int option, void *optval,
 
 int xs_sock_bind (xs_sock *self, const char *addr)
 {
-    return -ENOTSUP;
+    xs_transport *trans;
+    int rc = xs_create_transport (self->ctx, &trans, addr);
+    if (rc < 0)
+        return rc;
+    trans->socket = self;
+    rc = trans->plugin->bind (trans, addr);
+    if (rc < 0) {
+        free(trans);
+        return rc;
+    }
+
+    return 0;
 }
 
 int xs_sock_connect (xs_sock *self, const char *addr)
 {
-    return -ENOTSUP;
+    xs_transport *trans;
+    int rc = xs_create_transport (self->ctx, &trans, addr);
+    if (rc < 0)
+        return rc;
+    trans->socket = self;
+    rc = trans->plugin->connect (trans, addr);
+    if (rc < 0) {
+        free(trans);
+        return rc;
+    }
+    return 0;
 }
 
 int xs_sock_shutdown (xs_sock *self, int how)
@@ -209,80 +115,18 @@ int xs_sock_shutdown (xs_sock *self, int how)
     return -ENOTSUP;
 }
 
-int xs_sock_send (xs_sock *self, const void *buf, size_t len, int flags)
+int xs_sock_sendmsg (xs_sock *self, xs_msg *msg, int flags)
 {
-    int rc;
-
-    /*  Convert buffer into a message. */
-    xs_msg msg;
-    rc = xs_msg_init (&msg, len);
-    if (rc < 0)
-        return rc;
-    memcpy (xs_msg_data (&msg), buf, len);
-
-    xs_mutex_lock (&self->sync);
-    while (1) {
-
-        /*  Start the send operation. */
-        rc = xs_outstream_send (&self->out, &msg);
-
-        /*  If send succeeded synchronously, we can return immediately. */
-        if (likely (rc == 0)) {
-            xs_mutex_unlock (&self->sync);
-            return (int) len;
-        }
-
-        /*  If the asynchronous send operation is pending, we can return
-            immediately, however, we have to mark the connection is not
-            writeable at the moment. */
-        if (rc == -EINPROGRESS) {
-            xs_mutex_unlock (&self->sync);
-            return (int) len;
-        }
-
-        /*  In send is non-blocking and we cannot send, return to the caller. */
-        xs_assert (rc == -EAGAIN);
-        if (flags & XS_DONTWAIT) {
-            xs_mutex_unlock (&self->sync);
-            return -EAGAIN;
-        }
-
-        /*  Wait till socket becomes writeable. */
-        rc = pthread_cond_wait (&self->writeable, &self->sync);
-        errnum_assert (rc);
-    }
+    return self->pattern->send(self, msg, flags);
 }
 
-int xs_sock_recv (xs_sock *self, void *buf, size_t len, int flags)
+int xs_sock_recvmsg (xs_sock *self, xs_msg *msg, int flags)
 {
-    int rc;
-    xs_msg msg;
-    int msgsize;
+    return self->pattern->recv(self, msg, flags);
+}
 
-    rc = xs_msg_init (&msg, 0);
-    err_assert (rc);
-
-    xs_mutex_lock (&self->sync);
-    while (1) {
-
-        /*  Start the recv operation. */
-        rc = xs_instream_recv (&self->in, &msg);
-
-        /*  If recv succeeded synchronously, we can return immediately. */
-        if (likely (rc == 0))
-            break;
-
-        /*  Wait till socket becomes readable. */
-        rc = pthread_cond_wait (&self->readable, &self->sync);
-        errnum_assert (rc);
-    }
-    xs_mutex_unlock (&self->sync);
-
-    /*  Copy the data from the message to the user-supplied buffer. */
-    msgsize = (int) xs_msg_size (&msg);
-    memcpy (buf, xs_msg_data (&msg), len < msgsize ? len : msgsize);
-    xs_msg_term (&msg);
-    
-    return msgsize;
+int xs_socket_add_stream(void *sock, void *stream) {
+    //  TODO(tailhook) register all streams for socket
+    return ((xs_sock *)sock)->pattern->add_stream(sock, stream);
 }
 

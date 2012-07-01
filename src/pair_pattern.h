@@ -20,35 +20,11 @@
     IN THE SOFTWARE.
 */
 
-#include <errno.h>
+#ifndef XS_PAIR_PATTERN_INCLUDED
+#define XS_PAIR_PATTERN_INCLUDED
 
 #include "plugin.h"
-#include "pattern_plugin.h"
-#include "pattern_func.h"
-#include "transport_plugin.h"
-#include "transport_func.h"
-#include "ctx.h"
 
+xs_base_plugin *xs_pair_pattern();
 
-int xs_plug (void *context, void *plugin) {
-    xs_ctx *ctx = context;
-    xs_base_plugin *plug = plugin;
-
-    if (!plugin)
-        return -EFAULT;
-
-    if (plug->type <= 0 || plug->version <= 0)
-        return -EINVAL;
-
-    // here is actual plugin registration code
-    switch (plug->type) {
-    case XS_PLUGIN_PATTERN:
-        return xs_plug_pattern (ctx, (xs_pattern_plugin*) plugin);
-    case XS_PLUGIN_TRANSPORT:
-        return xs_plug_transport (ctx, (xs_transport_plugin*) plugin);
-    default:
-        return -ENOTSUP;
-    }
-
-    return -ENOTSUP;
-}
+#endif // XS_PAIR_PATTERN_INCLUDED

@@ -27,18 +27,13 @@
 #include <pthread.h>
 
 #include "mutex.h"
-#include "outstream.h"
-#include "instream.h"
+#include "pattern_plugin.h"
+#include "ctx.h"
+#include "msg.h"
+#include "msg.h"
 
-typedef struct xs_sock_
+typedef struct xs_sock
 {
-    struct {
-        void (*term) (struct xs_sock_ *self);
-        int (*setopt) (struct xs_sock_ *self, int level, int option,
-            const void *optval, size_t optvallen);
-        int (*getopt) (struct xs_sock_ *self, int level, int option,
-            void *optval, size_t *optvallen);
-    } vfptr;
 
     /*  Socket type (XS_PUB, XS_SUB, XS_REQ, XS_REP or similar). */
     int type;
@@ -47,21 +42,16 @@ typedef struct xs_sock_
         except for asynchronous operations. */
     xs_mutex sync;
 
-    /*  "Ready for writing" condition variable. */
-    pthread_cond_t writeable;
+    /*  Context that created socket  */
+    struct xs_ctx *ctx;
 
-    /*  "Ready for reading" condition variable. */
-    pthread_cond_t readable;
+    /*  Pointer to pattern plugin  */
+    xs_pattern_plugin *pattern;
 
-    /*  Outbound underlying socket. */
-    xs_outstream out;
+    /*  Pointer to pattern-specific structure  */
+    void *pattern_data;
 
-    /*  Inbound underlying socket. */
-    xs_instream in;
 } xs_sock;
-
-int xs_sock_alloc (xs_sock **self, int type);
-void xs_sock_dealloc (xs_sock *self);
 
 int xs_sock_init (xs_sock *self);
 void xs_sock_term (xs_sock *self);
@@ -73,7 +63,8 @@ int xs_sock_getopt (xs_sock *self, int level, int option, void *optval,
 int xs_sock_bind (xs_sock *self, const char *addr);
 int xs_sock_connect (xs_sock *self, const char *addr);
 int xs_sock_shutdown (xs_sock *self, int how);
-int xs_sock_send (xs_sock *self, const void *buf, size_t len, int flags);
-int xs_sock_recv (xs_sock *self, void *buf, size_t len, int flags);
+int xs_sock_sendmsg (xs_sock *self, xs_msg *msg, int flags);
+int xs_sock_recvmsg (xs_sock *self, xs_msg *msg, int flags);
+int xs_socket_add_stream(void *socket, void *stream);
 
 #endif

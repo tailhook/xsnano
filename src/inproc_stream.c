@@ -20,35 +20,44 @@
     IN THE SOFTWARE.
 */
 
-#include <errno.h>
-
+#include "inproc_stream.h"
 #include "plugin.h"
-#include "pattern_plugin.h"
-#include "pattern_func.h"
-#include "transport_plugin.h"
-#include "transport_func.h"
-#include "ctx.h"
 
 
-int xs_plug (void *context, void *plugin) {
-    xs_ctx *ctx = context;
-    xs_base_plugin *plug = plugin;
-
-    if (!plugin)
-        return -EFAULT;
-
-    if (plug->type <= 0 || plug->version <= 0)
-        return -EINVAL;
-
-    // here is actual plugin registration code
-    switch (plug->type) {
-    case XS_PLUGIN_PATTERN:
-        return xs_plug_pattern (ctx, (xs_pattern_plugin*) plugin);
-    case XS_PLUGIN_TRANSPORT:
-        return xs_plug_transport (ctx, (xs_transport_plugin*) plugin);
-    default:
-        return -ENOTSUP;
+int inproc_send (void *stream, xs_msg *msg, int flags) {
+    xs_inproc_stream *self = xs_stream_get_data (stream);
+    if (!self->outpipe) {
+        return -EPIPE;
     }
-
-    return -ENOTSUP;
+    int len = xs_msg_size(msg);
+    int rc = xs_msg_pipe_quick_push (self->outpipe, *msg);
+    if (rc < 0)
+        return rc;
+    xs_msg_init(msg, 0);
+    // if (!(flags & XS_SNDMORE))
+    //     return 0;
+    rc = xs_msg_pipe_flush (self->outpipe);
+    if (rc < 0)
+        return rc;
+    if (rc) {
+        //  TODO(tailhook) wake up pipe using eventfd
+    }
+    return len;
 }
+
+int inproc_recv (void *stream, xs_msg *msg, int flags) {
+    xs_inproc_stream *self = xs_stream_get_data (stream);
+    xs_msg_term(msg);
+    int rc = xs_msg_pipe_front(&self->inpipe, msg);
+    if(rc < 0)
+        return rc;
+    return xs_msg_size(msg);
+}
+
+
+xs_stream_plugin xs_inproc_stream_plugin = {
+    /* type */ XS_PLUGIN_STREAM,
+    /* version */ 1,
+    /* send */ inproc_send,
+    /* recv */ inproc_recv
+};

@@ -20,35 +20,26 @@
     IN THE SOFTWARE.
 */
 
-#include <errno.h>
+#ifndef XS_STREAM_INCLUDED
+#define XS_STREAM_INCLUDED
 
-#include "plugin.h"
-#include "pattern_plugin.h"
-#include "pattern_func.h"
-#include "transport_plugin.h"
-#include "transport_func.h"
-#include "ctx.h"
+#include "sock.h"
+#include "stream_plugin.h"
 
 
-int xs_plug (void *context, void *plugin) {
-    xs_ctx *ctx = context;
-    xs_base_plugin *plug = plugin;
+typedef struct xs_stream {
+    xs_sock *socket;
+    xs_stream_plugin *plugin;
+    void *userdata;
+} xs_stream;
 
-    if (!plugin)
-        return -EFAULT;
 
-    if (plug->type <= 0 || plug->version <= 0)
-        return -EINVAL;
+int xs_stream_send (void *stream, xs_msg *msg, int flags);
+int xs_stream_recv (void *stream, xs_msg *msg, int flags);
+int xs_stream_create (void **stream);
+void xs_stream_term (void *stream);
+void xs_stream_set_plugin (void *stream, void *plugin);
+void xs_stream_set_data (void *stream, void *data);
+void *xs_stream_get_data (void *stream);
 
-    // here is actual plugin registration code
-    switch (plug->type) {
-    case XS_PLUGIN_PATTERN:
-        return xs_plug_pattern (ctx, (xs_pattern_plugin*) plugin);
-    case XS_PLUGIN_TRANSPORT:
-        return xs_plug_transport (ctx, (xs_transport_plugin*) plugin);
-    default:
-        return -ENOTSUP;
-    }
-
-    return -ENOTSUP;
-}
+#endif // XS_STREAM_INCLUDED
