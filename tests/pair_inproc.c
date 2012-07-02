@@ -20,35 +20,49 @@
     IN THE SOFTWARE.
 */
 
-#include <errno.h>
+#include <stdio.h>
+#include <unistd.h>
 
-#include "plugin.h"
-#include "pattern_plugin.h"
-#include "pattern_func.h"
-#include "transport_plugin.h"
-#include "transport_func.h"
-#include "ctx.h"
+#include "xs.h"
+#include "err.h"
 
+int main ()
+{
+    int rc;
+    int sa, sb;
 
-int xs_plug (void *context, void *plugin) {
-    xs_ctx *ctx = context;
-    xs_base_plugin *plug = plugin;
+    printf ("pair_inproc test running...\n");
 
-    if (!plugin)
-        return -EFAULT;
+    rc = xs_init ();
+    errno_assert (rc == 0);
 
-    if (plug->type <= 0 || plug->version <= 0)
-        return -EINVAL;
+    sa = xs_socket (XS_PAIR);
+    errno_assert (sa >= 0);
 
-    // here is actual plugin registration code
-    switch (plug->type) {
-    case XS_PLUGIN_PATTERN:
-        return xs_plug_pattern (ctx, (xs_pattern_plugin*) plugin);
-    case XS_PLUGIN_TRANSPORT:
-        return xs_plug_transport (ctx, (xs_transport_plugin*) plugin);
-    default:
-        return -ENOTSUP;
-    }
+    sb = xs_socket (XS_PAIR);
+    errno_assert (sb >= 0);
 
-    return -ENOTSUP;
+    rc = xs_bind (sa, "inproc://test");
+    errno_assert (rc >= 0);
+
+    rc = xs_connect (sb, "inproc://test");
+    errno_assert (rc >= 0);
+
+    rc = xs_send (sa, "ABC", 3, 0);
+    errno_assert (rc == 3);
+
+    char buf [32];
+    rc = xs_recv (sb, buf, sizeof (buf), 0);
+    errno_assert (rc == 3);
+
+    rc = xs_close (sa);
+    errno_assert (rc == 0);
+
+    rc = xs_close (sb);
+    errno_assert (rc == 0);
+
+    rc = xs_term ();
+    errno_assert (rc == 0);
+
+    return 0;
 }

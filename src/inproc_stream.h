@@ -20,35 +20,26 @@
     IN THE SOFTWARE.
 */
 
-#include <errno.h>
+#ifndef XS_INPROC_STREAM_INCLUDED
+#define XS_INPROC_STREAM_INCLUDED
 
-#include "plugin.h"
-#include "pattern_plugin.h"
-#include "pattern_func.h"
-#include "transport_plugin.h"
-#include "transport_func.h"
-#include "ctx.h"
+#include "msg.h"
+#include "stream_plugin.h"
+
+#define XS_PIPE_TYPE xs_msg
+#define XS_PIPE_GRANULARITY 256
+#define XS_PIPE_NAME xs_msg_pipe
+#include "pipe_template.h"
 
 
-int xs_plug (void *context, void *plugin) {
-    xs_ctx *ctx = context;
-    xs_base_plugin *plug = plugin;
+typedef struct xs_inproc_stream {
+    xs_msg_pipe inpipe;
+    xs_msg_pipe *outpipe;
+    struct xs_inproc_stream *otherstream;
+} xs_inproc_stream;
 
-    if (!plugin)
-        return -EFAULT;
 
-    if (plug->type <= 0 || plug->version <= 0)
-        return -EINVAL;
+extern xs_stream_plugin xs_inproc_stream_plugin;
 
-    // here is actual plugin registration code
-    switch (plug->type) {
-    case XS_PLUGIN_PATTERN:
-        return xs_plug_pattern (ctx, (xs_pattern_plugin*) plugin);
-    case XS_PLUGIN_TRANSPORT:
-        return xs_plug_transport (ctx, (xs_transport_plugin*) plugin);
-    default:
-        return -ENOTSUP;
-    }
 
-    return -ENOTSUP;
-}
+#endif // XS_INPROC_STREAM_INCLUDED

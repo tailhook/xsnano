@@ -27,15 +27,25 @@
 #include "likely.h"
 #include "plugin.h"
 #include "stdplugins.h"
+#include "transport_func.h"
+#include "pattern_func.h"
 
 
 int xs_ctx_init (xs_ctx *self)
 {
+    int rc;
+
     self->socks_num = 512;
     self->socks = malloc (self->socks_num * sizeof (xs_sock*));
     alloc_assert (self->socks);
 
-    int rc = xs_add_standard_plugins (self);
+    rc = xs_patterns_init (self);
+    err_assert (rc);
+
+    rc = xs_transports_init (self);
+    err_assert (rc);
+
+    rc = xs_add_standard_plugins (self);
     err_assert (rc);  // standard plugins should always load
 
     rc = xs_threadpool_init (&self->threadpool);
@@ -68,13 +78,45 @@ int xs_ctx_term (xs_ctx *self)
 
     // Let's shutdown thread pool
     xs_mutex_lock (&self->sync);
+
     rc = xs_threadpool_shutdown (&self->threadpool);
     err_assert (rc);
+
+    rc = xs_patterns_free (self);
+    err_assert (rc);
+
+    rc = xs_transports_free (self);
+    err_assert (rc);
+
     xs_mutex_unlock (&self->sync);
 
     xs_mutex_term (&self->sync);
     free (self->socks);
     return 0;
+}
+
+static int make_socket(xs_ctx *self, int index, int type) {
+    int rc;
+
+    xs_sock *sock = malloc (sizeof (xs_sock));
+    if (unlikely (!sock))
+        return -ENOMEM;
+
+    rc = xs_sock_init (sock);
+    if (unlikely (rc != 0)) {
+        free (self);
+        return rc;
+    }
+    sock->type = type;
+    sock->ctx = self;
+    rc = xs_init_pattern (sock);
+    if (unlikely (rc != 0)) {
+        xs_sock_term (sock);
+        return rc;
+    }
+
+    self->socks [index] = sock;
+    return index;
 }
 
 int xs_ctx_socket (xs_ctx *self, int type)
@@ -91,11 +133,7 @@ int xs_ctx_socket (xs_ctx *self, int type)
     //  TODO: Find the empty slot in O(1) time!
     for (s = 0; s != self->socks_num; ++s) {
         if (!self->socks [s]) {
-            rc = xs_sock_alloc (&self->socks [s], type);
-            if (unlikely (rc < 0)) {
-                xs_mutex_unlock (&self->sync);
-                return rc;
-            }
+            s = make_socket (self, s, type);
             xs_mutex_unlock (&self->sync);
             return s;
         }
@@ -106,13 +144,11 @@ int xs_ctx_socket (xs_ctx *self, int type)
 
 int xs_ctx_close (xs_ctx *self, int s)
 {
-    int rc;
-
     if (s > self->socks_num || !self->socks [s])
         return -EBADF;
 
     xs_mutex_lock (&self->sync);
-    xs_sock_dealloc (self->socks [s]);
+    xs_sock_term (self->socks [s]);
     self->socks [s] = NULL;
     xs_mutex_unlock (&self->sync);
     return 0;

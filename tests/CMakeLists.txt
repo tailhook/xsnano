@@ -9,3 +9,4 @@ endmacro(add_libxs_test)
 
 add_libxs_test(basic)
 add_libxs_test(pipe)
+add_libxs_test(pair_inproc)

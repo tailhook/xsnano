@@ -103,8 +103,7 @@ int xs_setsockopt (int s, int level, int option, const void *optval,
     int rc;
 
     XS_CHECK_SOCKET (s);
-    rc = ctx.socks [s]->vfptr.setopt (ctx.socks [s], level, option,
-        optval, optvallen);
+    rc = xs_sock_setopt (ctx.socks [s], level, option, optval, optvallen);
     if (unlikely (rc < 0)) {
         errno = -rc;
         return -1;
@@ -118,8 +117,7 @@ int xs_getsockopt (int s, int level, int option, void *optval,
     int rc;
 
     XS_CHECK_SOCKET (s);
-    rc = ctx.socks [s]->vfptr.getopt (ctx.socks [s], level, option,
-        optval, optvallen);
+    rc = xs_sock_getopt (ctx.socks [s], level, option, optval, optvallen);
     if (unlikely (rc < 0)) {
         errno = -rc;
         return -1;
@@ -171,8 +169,16 @@ int xs_send (int s, const void *buf, size_t len, int flags)
     int rc;
 
     XS_CHECK_SOCKET (s);
-    rc = xs_sock_send (ctx.socks [s], buf, len, flags);
+    xs_msg msg;
+    rc = xs_msg_init(&msg, len);
     if (unlikely (rc < 0)) {
+        errno = -rc;
+        return -1;
+    }
+    memcpy(&msg, buf, len);
+    rc = xs_sock_sendmsg (ctx.socks [s], &msg, flags);
+    if (unlikely (rc < 0)) {
+        xs_msg_term(&msg);
         errno = -rc;
         return -1;
     }
@@ -184,11 +190,21 @@ int xs_recv (int s, void *buf, size_t len, int flags)
     int rc;
 
     XS_CHECK_SOCKET (s);
-    rc = xs_sock_recv (ctx.socks [s], buf, len, flags);
+    xs_msg msg;
+    rc = xs_msg_init(&msg, 0);
     if (unlikely (rc < 0)) {
         errno = -rc;
         return -1;
     }
+    rc = xs_sock_recvmsg (ctx.socks [s], &msg, flags);
+    if (unlikely (rc < 0)) {
+        errno = -rc;
+        return -1;
+    }
+    if(len > rc) {
+        len = rc;
+    }
+    memcpy(buf, xs_msg_data(&msg), len);
     return rc;
 }
 

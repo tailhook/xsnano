@@ -20,35 +20,22 @@
     IN THE SOFTWARE.
 */
 
-#include <errno.h>
-
-#include "plugin.h"
-#include "pattern_plugin.h"
-#include "pattern_func.h"
-#include "transport_plugin.h"
-#include "transport_func.h"
-#include "ctx.h"
+#ifndef XS_STREAM_PLUGIN_INCLUDED
+#define XS_STREAM_PLUGIN_INCLUDED
 
 
-int xs_plug (void *context, void *plugin) {
-    xs_ctx *ctx = context;
-    xs_base_plugin *plug = plugin;
+typedef struct xs_stream_plugin {
+    //  base plugin
+    int type;        //  = XS_PLUGIN_STREAM
+    int version;
+    //  end of base plugin
 
-    if (!plugin)
-        return -EFAULT;
+    int (*send)(void *transport, xs_msg *msg, int flags);
+    int (*recv)(void *transport, xs_msg *msg, int flags);
 
-    if (plug->type <= 0 || plug->version <= 0)
-        return -EINVAL;
+} xs_stream_plugin;
 
-    // here is actual plugin registration code
-    switch (plug->type) {
-    case XS_PLUGIN_PATTERN:
-        return xs_plug_pattern (ctx, (xs_pattern_plugin*) plugin);
-    case XS_PLUGIN_TRANSPORT:
-        return xs_plug_transport (ctx, (xs_transport_plugin*) plugin);
-    default:
-        return -ENOTSUP;
-    }
+void xs_stream_set_data(void *stream, void *userdata);
+void *xs_stream_get_data(void *stream);
 
-    return -ENOTSUP;
-}
+#endif // XS_STREAM_PLUGIN_INCLUDED

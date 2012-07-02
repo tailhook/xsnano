@@ -5,16 +5,18 @@ add_library(xs SHARED
     instream.c
     msg.c
     mutex.c
-    pub.c
     sock.c
-    sub.c
     outstream.c
     wire.c
-    xpub.c
-    xsub.c
     plugin.c
     stdplugins.c
     threadpool.c
+    transport_plugin.c
+    inproc_transport.c
+    pattern_plugin.c
+    pair_pattern.c
+    stream.c
+    inproc_stream.c
     )
 target_link_libraries(xs ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS xs DESTINATION lib)

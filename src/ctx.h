@@ -20,25 +20,34 @@
     IN THE SOFTWARE.
 */
 
+
 #ifndef XS_CTX_INCLUDED
 #define XS_CTX_INCLUDED
 
 #include "sock.h"
 #include "mutex.h"
 #include "threadpool.h"
+#include "pattern_plugin.h"
+#include "transport_plugin.h"
 
-typedef struct
+
+typedef struct xs_ctx
 {
     /*  Array of all available socket slots. Unoccupied socket slots contain a
         NULL pointer. */
     size_t socks_num;
-    xs_sock **socks;
+    struct xs_sock **socks;
 
     /*  Critical section wrapping the context object. */
     xs_mutex sync;
 
     xs_threadpool threadpool;
+
+    /*  Plugin registries  */
+    xs_patterns patterns;
+    xs_transports transports;
 } xs_ctx;
+
 
 int xs_ctx_init (xs_ctx *self);
 int xs_ctx_term (xs_ctx *self);
