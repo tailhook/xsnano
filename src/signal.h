@@ -20,37 +20,17 @@
     IN THE SOFTWARE.
 */
 
-#ifndef XS_THREADPOOL_INCLUDED
-#define XS_THREADPOOL_INCLUDED
+#ifndef XS_SIGNAL_INCLUDED
+#define XS_SIGNAL_INCLUDED
 
-#include <pthread.h>
+typedef struct xs_signal {
+    int eventfd;
+} xs_signal;
 
-#include "commands.h"
-#include "signal.h"
+int xs_signal_init (xs_signal *);
+void xs_signal_term (xs_signal *);
+int xs_signal_wakeup (xs_signal *);
+int xs_signal_check (xs_signal *);
+void xs_signal_wait (xs_signal *);
 
-enum xs_thread_status {
-    XS_THREAD_STARTING,
-    XS_THREAD_WORKING,
-    XS_THREAD_STOPPING,
-    XS_THREAD_STOPPED
-};
-
-typedef struct {
-    pthread_t posix_id;
-    enum xs_thread_status status;
-    int load;
-    xs_signal signal;
-    xs_cmdpipe pipe;
-} xs_thread;
-
-typedef struct {
-    int num_threads;
-    xs_thread **threads;
-} xs_threadpool;
-
-int xs_threadpool_init(xs_threadpool *pool);
-int xs_threadpool_ensure_ready(xs_threadpool *pool);
-int xs_threadpool_resize(xs_threadpool *pool, int size);
-int xs_threadpool_shutdown(xs_threadpool *pool);
-
-#endif // XS_THREADPOOL_INCLUDED
+#endif // XS_SIGNAL_INCLUDED

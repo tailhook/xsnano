@@ -20,9 +20,9 @@
     IN THE SOFTWARE.
 */
 
-#include <sys/eventfd.h>
 #include <poll.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "err.h"
 #include "threadpool.h"
@@ -30,24 +30,11 @@
 
 static void *thread_start(xs_thread *thread) {
     thread->status = XS_THREAD_WORKING;
-    struct pollfd pi = { thread->signalfd, POLLIN, 0 };
-    uint64_t efdval = 0;
     xs_command cmd;
+    int rc;
 
     while (1) {
-        int rc = poll (&pi, 1, -1);
-        if (rc < 0) {
-            if (errno == EAGAIN || errno == EINTR)
-                continue;
-            err_assert (rc);
-        }
-        xs_assert (rc > 0);
-        rc = read (thread->signalfd, &efdval, sizeof(efdval));
-        if (rc < 0) {
-            if (errno == EAGAIN || errno == EINTR)
-                continue;
-            err_assert (rc);
-        }
+        xs_signal_wait (&thread->signal);
         while (1) {
             rc = xs_cmdpipe_pop (&thread->pipe, &cmd);
             if (rc < 0) {
@@ -97,28 +84,26 @@ int xs_threadpool_ensure_ready (xs_threadpool *pool) {
 
         rc = xs_cmdpipe_init (&thread->pipe);
         if(rc < 0)
-            goto error;
+            goto error_free_thread;
 
-        rc = eventfd (0, EFD_CLOEXEC|EFD_NONBLOCK);
-        if(rc < 0) {
-            rc = -errno;
-            goto error;
-        }
-        thread->signalfd = rc;
+        rc = xs_signal_init (&thread->signal);
+        if(rc < 0)
+            goto error_close_pipe;
 
         rc = pthread_create (&thread->posix_id, NULL,
             (void *(*)(void *))thread_start, thread);
         if(rc < 0)
-            goto error;
+            goto error_close_signal;
         pool->threads[i] = thread;
     }
     return 0;
+error_close_signal:
+    xs_signal_term (&thread->signal);
+error_close_pipe:
+    xs_cmdpipe_free (&thread->pipe);
+error_free_thread:
+    free (thread);
 error:
-    if (thread) {
-        if (thread->signalfd)
-            close (thread->signalfd);
-        free (thread);
-    }
     if (i == 0) {
         //  When we failed to create even a single thread, we leave thread
         //  pool in uninitialized state
@@ -153,16 +138,15 @@ int xs_threadpool_shutdown (xs_threadpool *pool) {
 
     // Let's send shutdown command
     xs_command shutdown = { XS_CMD_SHUTDOWN };
-    uint64_t one = 1;
     for (i = 0; i < pool->num_threads; ++i) {
         int status = pool->threads[i]->status;
         if(status == XS_THREAD_STARTING || status == XS_THREAD_WORKING) {
             rc = xs_cmdpipe_push (&pool->threads[i]->pipe, shutdown);
             if(rc > 0) {
-                rc = write (pool->threads[i]->signalfd, &one, sizeof (one));
+                rc = xs_signal_wakeup (&pool->threads[i]->signal);
                 //  There are no realistic situation where write to eventfd
                 //  can fail. But watch out other signalling implementations
-                xs_assert (rc == sizeof (one));
+                err_assert (rc);
             } else {
                 // No memory to send shutdown signal to pipe, what to do?
                 // TODO(tailhook): probably we can wait for other threads to
@@ -180,10 +164,10 @@ int xs_threadpool_shutdown (xs_threadpool *pool) {
             //  There's no way pthread_join can fail in our case, right?
             xs_assert (rc == 0);
             pool->threads[i]->status = XS_THREAD_STOPPED;
-            rc = xs_cmdpipe_free(&pool->threads[i]->pipe);
+            rc = xs_cmdpipe_free (&pool->threads[i]->pipe);
             xs_assert (rc == 0);
-            close(pool->threads[i]->signalfd);
-            free(pool->threads[i]);
+            xs_signal_term (&pool->threads[i]->signal);
+            free (pool->threads[i]);
             pool->threads[i] = NULL;
         }
     }
