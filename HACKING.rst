@@ -34,3 +34,19 @@ Transport vs Stream
   this point if we figure out how to combine different transports with
   different streams)
 
+xs_recv()/xs_send() Wake Up
+---------------------------
+
+* We create an xs_signal (eventfd or socketpair) per application thread (keep
+  it in threadlocals)
+* Each time the application thread is about to block, it registers itself in
+  sock->listeners list and sleeps in xs_signal_wait
+* xs_sock_update_state() is API for pattern plugin to wakeup listeners
+* In theory same applies to xs_poll, it can register single eventfd in
+  multiple sockets and wait for events
+* Having a list of listeners allows to have multiple xs_recv/xs_send in
+  multiple threads simultaneously
+* We do not wakeup anything if nobody is listening on the socket
+* We do not wait for signal in case socket is readable/writable (this may need
+  to be tweaked for socketpair)
+
