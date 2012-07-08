@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012 250bpm s.r.o.
+    Copyright (c) 2012 Paul Colomiets
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to
@@ -20,43 +20,36 @@
     IN THE SOFTWARE.
 */
 
+#ifndef XS_THREADLOCAL_INCLUDED
+#define XS_THREADLOCAL_INCLUDED
 
-#ifndef XS_CTX_INCLUDED
-#define XS_CTX_INCLUDED
+#include <pthread.h>
+#include <sys/queue.h>
 
-#include "sock.h"
 #include "mutex.h"
-#include "threadpool.h"
-#include "threadlocal.h"
-#include "pattern_plugin.h"
-#include "transport_plugin.h"
+#include "signal.h"
 
 
-typedef struct xs_ctx
-{
-    /*  Array of all available socket slots. Unoccupied socket slots contain a
-        NULL pointer. */
-    size_t socks_num;
-    struct xs_sock **socks;
+typedef struct {
+    pthread_key_t key;
 
-    /*  Critical section wrapping the context object. */
+    //  When destroing pthread_key_t there is no way to enumerate all the
+    //  thread local instances, so we keep them in a list
+    LIST_HEAD (xs_threadlocal_head, xs_threadlocal_data) registry;
+
+    // List syncronization
     xs_mutex sync;
 
-    xs_threadpool threadpool;
-    xs_threadlocal threadlocal;
+} xs_threadlocal;
 
-    /*  Plugin registries  */
-    xs_patterns patterns;
-    xs_transports transports;
-} xs_ctx;
+typedef struct xs_threadlocal_data {
+    xs_threadlocal *parent;
+    xs_signal signal;
+    LIST_ENTRY (xs_threadlocal_data) list;
+} xs_threadlocal_data;
 
+int xs_threadlocal_init (xs_threadlocal *);
+int xs_threadlocal_term (xs_threadlocal *);
+int xs_threadlocal_get (xs_threadlocal *, xs_threadlocal_data **data);
 
-int xs_ctx_init (xs_ctx *self);
-int xs_ctx_term (xs_ctx *self);
-int xs_ctx_setopt (xs_ctx *self, int option,
-                   const void *value, size_t value_len);
-
-int xs_ctx_socket (xs_ctx *self, int type);
-int xs_ctx_close (xs_ctx *self, int s);
-
-#endif
+#endif // XS_THREADLOCAL_INCLUDED

@@ -24,6 +24,7 @@
 
 #include "msg.h"
 #include "err.h"
+#include "atomic.h"
 
 int xs_msg_init (xs_msg *self, size_t size)
 {
@@ -38,7 +39,7 @@ int xs_msg_init (xs_msg *self, size_t size)
     if (!self->lmsg.content)
         return -ENOMEM;
 
-    self->lmsg.content->data = self->lmsg.content + 1;
+    self->lmsg.content->data = (void *)(self->lmsg.content + 1);
     self->lmsg.content->size = size;
     self->lmsg.content->refcnt = 1;
 
@@ -55,13 +56,14 @@ void xs_msg_term (xs_msg *self)
     if (self->base.type == XS_MSGTYPE_SHARED) {
 
         /*  TODO: This should be an atomic operation! */
-        self->lmsg.content->refcnt--;
-        if (self->lmsg.content->refcnt)
+        if (XS_ATOMIC_SUB_FETCH(self->lmsg.content->refcnt, 1) > 0)
             return;
     }
 
-    free (self->lmsg.content);
-    self->base.type = 0;
+    if (self->base.type) {
+        free (self->lmsg.content);
+        self->base.type = 0;
+    }
 }
 
 unsigned char *xs_msg_data (xs_msg *self)

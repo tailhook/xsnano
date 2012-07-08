@@ -41,6 +41,7 @@
 #include "stream.h"
 #include "mutex.h"
 #include "err.h"
+#include "sock_api.h"
 
 #define INPROC_CONNECTED 1
 #define INPROC_BOUND 2
@@ -104,12 +105,14 @@ static int connect_sockets (inproc_bound *bound, inproc_connected *conn) {
         goto err_ss2;
     xs_stream_set_plugin(ss1, &xs_inproc_stream_plugin);
     xs_stream_set_data(ss1, s1);
+    s1->realstream = ss1;
     xs_stream_set_plugin(ss2, &xs_inproc_stream_plugin);
     xs_stream_set_data(ss2, s2);
-    rc = xs_socket_add_stream(xs_transport_get_socket(bound->transport), ss1);
+    s2->realstream = ss2;
+    rc = xs_sock_add_stream(xs_transport_get_socket(bound->transport), ss1);
     if (rc < 0)
         goto err_add_ss1;
-    rc = xs_socket_add_stream(xs_transport_get_socket(conn->transport), ss2);
+    rc = xs_sock_add_stream(xs_transport_get_socket(conn->transport), ss2);
     if (rc < 0)
         goto err_add_ss2;
     return 0;

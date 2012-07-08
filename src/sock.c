@@ -26,16 +26,20 @@
 #include "../include/xs.h"
 
 #include "sock.h"
+#include "sock_api.h"
 #include "err.h"
 #include "likely.h"
 #include "msg.h"
 #include "stream.h"
 #include "transport_func.h"
+#include "threadlocal.h"
 
 
 int xs_sock_init (xs_sock *self)
 {
+    self->state = 0;
     xs_mutex_init (&self->sync);
+    LIST_INIT (&self->listeners);
     return 0;
 }
 
@@ -117,16 +121,100 @@ int xs_sock_shutdown (xs_sock *self, int how)
 
 int xs_sock_sendmsg (xs_sock *self, xs_msg *msg, int flags)
 {
-    return self->pattern->send(self, msg, flags);
+    xs_sock_lock(self);
+    int rc = self->pattern->send(self, msg, flags);
+    if(rc == -EAGAIN && !(flags & XS_DONTWAIT)) {
+        xs_threadlocal_data *data;
+        rc = xs_threadlocal_get(&self->ctx->threadlocal, &data);
+        if(rc < 0) {
+            xs_sock_unlock(self);
+            return rc;
+        }
+        xs_listener listener;
+        listener.signal = &data->signal;
+        listener.mask = XS_STATE_WRITEABLE;
+        LIST_INSERT_HEAD (&self->listeners, &listener, list);
+        do {
+            self->state &= ~XS_STATE_WRITEABLE;
+            xs_sock_unlock (self);
+            xs_signal_wait (&data->signal);
+            xs_sock_lock (self);
+            rc = self->pattern->send(self, msg, flags);
+        } while (rc == -EAGAIN);
+        LIST_REMOVE (&listener, list);
+    }
+    xs_sock_unlock (self);
+    return rc;
 }
 
 int xs_sock_recvmsg (xs_sock *self, xs_msg *msg, int flags)
 {
-    return self->pattern->recv(self, msg, flags);
+    xs_sock_lock(self);
+    int rc = self->pattern->recv(self, msg, flags);
+    if(rc == -EAGAIN && !(flags & XS_DONTWAIT)) {
+        xs_threadlocal_data *data;
+        rc = xs_threadlocal_get(&self->ctx->threadlocal, &data);
+        if(rc < 0) {
+            xs_sock_unlock(self);
+            return rc;
+        }
+        xs_listener listener;
+        listener.signal = &data->signal;
+        listener.mask = XS_STATE_READABLE;
+        LIST_INSERT_HEAD (&self->listeners, &listener, list);
+        do {
+            self->state &= ~XS_STATE_READABLE;
+            xs_sock_unlock (self);
+            xs_signal_wait (&data->signal);
+            xs_sock_lock (self);
+            rc = self->pattern->recv(self, msg, flags);
+        } while (rc == -EAGAIN);
+        LIST_REMOVE (&listener, list);
+    }
+    xs_sock_unlock(self);
+    return rc;
 }
 
-int xs_socket_add_stream(void *sock, void *stream) {
+int xs_sock_add_stream (void *sock, void *stream) {
     //  TODO(tailhook) register all streams for socket
-    return ((xs_sock *)sock)->pattern->add_stream(sock, stream);
+    ((xs_stream *)stream)->socket = sock;
+    return ((xs_sock *)sock)->pattern->add_stream (sock, stream);
 }
+
+void xs_sock_lock (void *sock) {
+    xs_mutex_lock (&((xs_sock *)sock)->sync);
+}
+
+void xs_sock_unlock(void *sock) {
+    xs_mutex_unlock (&((xs_sock *)sock)->sync);
+}
+
+static void sock_wakeup (xs_sock *sock, int bit) {
+    xs_listener *item;
+    LIST_FOREACH (item, &sock->listeners, list) {
+        if (item->mask & bit) {
+            xs_signal_wakeup(item->signal);
+        }
+    }
+}
+
+// must be called under mutex
+void xs_sock_update_state (void *sock, int state) {
+    xs_sock *self = sock;
+    switch (state) {
+    case XS_BECOME_READABLE:
+        if (self->state & XS_STATE_READABLE) // already readable
+            return;
+        self->state |= XS_STATE_READABLE;
+        sock_wakeup(self, XS_STATE_READABLE);
+        break;
+    case XS_BECOME_WRITEABLE:
+        if (self->state & XS_STATE_WRITEABLE) // already writeable
+            return;
+        self->state |= XS_STATE_WRITEABLE;
+        sock_wakeup(self, XS_STATE_WRITEABLE);
+        break;
+    }
+}
+
 

@@ -22,6 +22,7 @@
 
 #include "stream.h"
 #include "err.h"
+#include "sock_api.h"
 
 int xs_stream_send (void *stream, xs_msg *msg, int flags) {
     return ((xs_stream *)stream)->plugin->send(stream, msg, flags);
@@ -62,5 +63,12 @@ void xs_stream_set_data (void *stream, void *data) {
 void *xs_stream_get_data (void *stream) {
     xs_stream *self = stream;
     return self->userdata;
+}
+
+void xs_stream_notify_update (void *stream, int state) {
+    xs_stream *self = stream;
+    xs_sock_lock(self->socket);
+    self->socket->pattern->stream_update(self->socket, stream, state);
+    xs_sock_unlock(self->socket);
 }
 

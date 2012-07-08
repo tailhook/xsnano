@@ -35,6 +35,9 @@
 #define XS_PLUGIN_TRANSPORT 3
 #define XS_PLUGIN_STREAM 4
 
+#define XS_STREAM_READABLE 1
+#define XS_STREAM_WRITEABLE 2
+
 typedef struct xs_base_plugin {
     int type;
     int version;

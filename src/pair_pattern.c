@@ -26,12 +26,13 @@
 #include "err.h"
 #include "stream_plugin.h"
 #include "stream.h"
+#include "sock_api.h"
 
 typedef struct {
     void *stream;
 } xs_pair_data;
 
-int init_socket (void *socket) {
+static int init_socket (void *socket) {
     xs_pair_data *str = malloc (sizeof (xs_pair_data));
     if (!str)
         return -ENOMEM;
@@ -40,37 +41,51 @@ int init_socket (void *socket) {
     return 0;
 }
 
-int close_socket (void *socket) {
+static int close_socket (void *socket) {
     xs_pair_data *str = (xs_pair_data*) xs_pattern_get_data (socket);
     //  TODO(tailhook) do we need to shutdown a stream manually?
     free(str);
     return 0;
 }
 
-int check_transport (void *socket, void *transport) {
+static int check_transport (void *socket, void *transport) {
     return 0;  // all allowed temporarily
 }
 
-int add_stream (void *socket, void *stream) {
+static int add_stream (void *socket, void *stream) {
     xs_pair_data *str = (xs_pair_data*) xs_pattern_get_data (socket);
-    if (str->stream)
+    xs_sock_lock (socket);
+    if (str->stream) {
+        xs_sock_unlock (socket);
         return -EBUSY;
+    }
     str->stream = stream;
+
+    //  TODO(tailhook) Probably look at the stream, before doing update_state
+    xs_sock_update_state(socket, XS_STATE_READABLE);
+    xs_sock_update_state(socket, XS_STATE_WRITEABLE);
+
+    xs_sock_unlock(socket);
     return 0;
 }
 
-int pair_send (void *socket, xs_msg *msg, int flags) {
+static int pair_send (void *socket, xs_msg *msg, int flags) {
     xs_pair_data *self = (xs_pair_data*) xs_pattern_get_data (socket);
     if (!self->stream)
         return -EAGAIN;
     return xs_stream_send(self->stream, msg, flags);
 }
 
-int pair_recv (void *socket, xs_msg *msg, int flags) {
+static int pair_recv (void *socket, xs_msg *msg, int flags) {
     xs_pair_data *self = (xs_pair_data*) xs_pattern_get_data (socket);
     if (!self->stream)
         return -EAGAIN;
     return xs_stream_recv(self->stream, msg, flags);
+}
+
+static void stream_update (void *socket, void *stream, int state) {
+    //  We have only one stream, so let's just proxy event to the core
+    xs_sock_update_state(socket, state);
 }
 
 static xs_pattern_plugin xs_pair_pattern_struct = {
@@ -86,7 +101,8 @@ static xs_pattern_plugin xs_pair_pattern_struct = {
     /* check_transport */ check_transport,
     /* add_stream */ add_stream,
     /* send */ pair_send,
-    /* recv */ pair_recv
+    /* recv */ pair_recv,
+    /* stream_update */ stream_update
 };
 
 xs_base_plugin *xs_pair_pattern () {

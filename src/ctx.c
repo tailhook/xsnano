@@ -38,6 +38,10 @@ int xs_ctx_init (xs_ctx *self)
     self->socks_num = 512;
     self->socks = malloc (self->socks_num * sizeof (xs_sock*));
     alloc_assert (self->socks);
+    memset (self->socks, 0, self->socks_num * sizeof (xs_sock *));
+
+    rc = xs_threadlocal_init (&self->threadlocal);
+    err_assert (rc);
 
     rc = xs_patterns_init (self);
     err_assert (rc);
@@ -86,6 +90,9 @@ int xs_ctx_term (xs_ctx *self)
     err_assert (rc);
 
     rc = xs_transports_free (self);
+    err_assert (rc);
+
+    rc = xs_threadlocal_term (&self->threadlocal);
     err_assert (rc);
 
     xs_mutex_unlock (&self->sync);

@@ -33,6 +33,7 @@
 
 
 typedef struct xs_inproc_stream {
+    void *realstream;
     xs_msg_pipe inpipe;
     xs_msg_pipe *outpipe;
     struct xs_inproc_stream *otherstream;

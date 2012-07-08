@@ -30,7 +30,18 @@
 #include "pattern_plugin.h"
 #include "ctx.h"
 #include "msg.h"
-#include "msg.h"
+#include "signal.h"
+
+
+typedef struct xs_listener {
+    LIST_ENTRY (xs_listener) list;
+
+    //  Pointer to signal from eventfd
+    xs_signal *signal;
+
+    //  Mask of which signals one want to listen, bitmask of XS_STATE_*
+    int mask;
+} xs_listener;
 
 typedef struct xs_sock
 {
@@ -51,6 +62,15 @@ typedef struct xs_sock
     /*  Pointer to pattern-specific structure  */
     void *pattern_data;
 
+    /*  Bitmask of current sockets state (XS_STATE_*) */
+    int state;
+
+    /*  Signal to wakeup listening sockets */
+    xs_signal signal;
+
+    /*  List of listeners to this socket  */
+    LIST_HEAD (xs_sock_listeners, xs_listener) listeners;
+
 } xs_sock;
 
 int xs_sock_init (xs_sock *self);
@@ -65,6 +85,5 @@ int xs_sock_connect (xs_sock *self, const char *addr);
 int xs_sock_shutdown (xs_sock *self, int how);
 int xs_sock_sendmsg (xs_sock *self, xs_msg *msg, int flags);
 int xs_sock_recvmsg (xs_sock *self, xs_msg *msg, int flags);
-int xs_socket_add_stream(void *socket, void *stream);
 
 #endif

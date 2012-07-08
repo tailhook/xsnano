@@ -18,6 +18,7 @@ add_library(xs SHARED
     stream.c
     inproc_stream.c
     signal.c
+    threadlocal.c
     )
 target_link_libraries(xs ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS xs DESTINATION lib)

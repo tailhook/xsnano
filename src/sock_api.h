@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012 250bpm s.r.o.
+    Copyright (c) 2012 Paul Colomiets
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to
@@ -20,43 +20,28 @@
     IN THE SOFTWARE.
 */
 
+/*
+    This module includes functions and declarations which will become a part
+    of plugin API, they must *not* be used in application code
 
-#ifndef XS_CTX_INCLUDED
-#define XS_CTX_INCLUDED
-
-#include "sock.h"
-#include "mutex.h"
-#include "threadpool.h"
-#include "threadlocal.h"
-#include "pattern_plugin.h"
-#include "transport_plugin.h"
+*/
+#ifndef XS_SOCK_API_INCLUDED
+#define XS_SOCK_API_INCLUDED
 
 
-typedef struct xs_ctx
-{
-    /*  Array of all available socket slots. Unoccupied socket slots contain a
-        NULL pointer. */
-    size_t socks_num;
-    struct xs_sock **socks;
+//  Bits for the state variable
+#define XS_STATE_READABLE 1
+#define XS_STATE_WRITEABLE 2
 
-    /*  Critical section wrapping the context object. */
-    xs_mutex sync;
-
-    xs_threadpool threadpool;
-    xs_threadlocal threadlocal;
-
-    /*  Plugin registries  */
-    xs_patterns patterns;
-    xs_transports transports;
-} xs_ctx;
+//  States for the update_state() method
+#define XS_BECOME_READABLE 1
+#define XS_BECOME_WRITEABLE 2
 
 
-int xs_ctx_init (xs_ctx *self);
-int xs_ctx_term (xs_ctx *self);
-int xs_ctx_setopt (xs_ctx *self, int option,
-                   const void *value, size_t value_len);
+int xs_sock_add_stream(void *socket, void *stream);
+void xs_sock_update_state (void *sock, int state);
+void xs_sock_lock(void *sock);
+void xs_sock_unlock(void *sock);
 
-int xs_ctx_socket (xs_ctx *self, int type);
-int xs_ctx_close (xs_ctx *self, int s);
+#endif // XS_SOCK_API_INCLUDED
 
-#endif

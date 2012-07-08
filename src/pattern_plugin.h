@@ -61,6 +61,8 @@ typedef struct xs_pattern_plugin {
     int (*send)(void *socket, xs_msg *msg, int flags);
     int (*recv)(void *socket, xs_msg *msg, int flags);
 
+    void (*stream_update)(void *socket, void *stream, int state);
+
 } xs_pattern_plugin;
 
 typedef struct xs_pattern_entry {

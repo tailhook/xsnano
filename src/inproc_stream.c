@@ -21,7 +21,9 @@
 */
 
 #include "inproc_stream.h"
+#include "stream.h"
 #include "plugin.h"
+#include "sock_api.h"
 
 
 int inproc_send (void *stream, xs_msg *msg, int flags) {
@@ -40,7 +42,8 @@ int inproc_send (void *stream, xs_msg *msg, int flags) {
     if (rc < 0)
         return rc;
     if (rc) {
-        //  TODO(tailhook) wake up pipe using eventfd
+        xs_stream_notify_update (self->otherstream->realstream,
+                                 XS_BECOME_READABLE);
     }
     return len;
 }
@@ -48,7 +51,7 @@ int inproc_send (void *stream, xs_msg *msg, int flags) {
 int inproc_recv (void *stream, xs_msg *msg, int flags) {
     xs_inproc_stream *self = xs_stream_get_data (stream);
     xs_msg_term(msg);
-    int rc = xs_msg_pipe_front(&self->inpipe, msg);
+    int rc = xs_msg_pipe_pop(&self->inpipe, msg);
     if(rc < 0)
         return rc;
     return xs_msg_size(msg);

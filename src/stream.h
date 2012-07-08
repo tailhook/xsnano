@@ -41,5 +41,6 @@ void xs_stream_term (void *stream);
 void xs_stream_set_plugin (void *stream, void *plugin);
 void xs_stream_set_data (void *stream, void *data);
 void *xs_stream_get_data (void *stream);
+void xs_stream_notify_update (void *stream, int state);
 
 #endif // XS_STREAM_INCLUDED

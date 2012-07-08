@@ -175,7 +175,7 @@ int xs_send (int s, const void *buf, size_t len, int flags)
         errno = -rc;
         return -1;
     }
-    memcpy(&msg, buf, len);
+    memcpy(xs_msg_data(&msg), buf, len);
     rc = xs_sock_sendmsg (ctx.socks [s], &msg, flags);
     if (unlikely (rc < 0)) {
         xs_msg_term(&msg);
@@ -205,6 +205,7 @@ int xs_recv (int s, void *buf, size_t len, int flags)
         len = rc;
     }
     memcpy(buf, xs_msg_data(&msg), len);
+    xs_msg_term (&msg);
     return rc;
 }
 
