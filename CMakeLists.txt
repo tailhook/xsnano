@@ -7,5 +7,6 @@ find_package(Threads)
 
 add_subdirectory(src)
 add_subdirectory(tests)
+add_subdirectory(perf)
 
 install(FILES include/xs.h DESTINATION include/xs)
